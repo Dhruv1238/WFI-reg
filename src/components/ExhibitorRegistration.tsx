@@ -26,14 +26,14 @@ const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]{1}/; // Basic PAN regex
 const schema = z
   .object({
     // Step 1: Contact Information
-    profilePhoto: z
-      .any()
-      .optional()
-      .refine(
-        (file) =>
-          !file || (file instanceof File && file.type.startsWith("image/")),
-        "Please upload a valid image file"
-      ),
+    // profilePhoto: z
+    //   .any()
+    //   .optional()
+    //   .refine(
+    //     (file) =>
+    //       !file || (file instanceof File && file.type.startsWith("image/")),
+    //     "Please upload a valid image file"
+    //   ),
     companyName: z.string().min(1, "Company/Organization Name is required"),
     chiefExecutiveTitle: z.string().min(1, "Chief Executive Title is required"),
     chiefExecutiveFirstName: z
@@ -82,7 +82,7 @@ const schema = z
       .string()
       .regex(panRegex, "Invalid PAN format")
       .min(1, "Company PAN is required"),
-    gstNumber: z.string().optional(),
+    gstNumber: z.string().min(1, "GST Number is required"),
     isExporter: z.enum(["yes", "no"], {
       required_error: "Please select ",
     }),
@@ -112,7 +112,7 @@ const schema = z
 // Define fields for each step to trigger validation
 const stepFields = {
   1: [
-    "profilePhoto",
+    // "profilePhoto",
     "companyName",
     "chiefExecutiveTitle",
     "chiefExecutiveFirstName",
@@ -177,7 +177,7 @@ const ExhibitorRegistration = () => {
     resolver: zodResolver(schema),
     mode: "onChange", // Validate on change for better UX
     defaultValues: {
-      profilePhoto: undefined,
+      // profilePhoto: undefined,
       companyName: "",
       chiefExecutiveTitle: "",
       chiefExecutiveFirstName: "",
@@ -205,7 +205,7 @@ const ExhibitorRegistration = () => {
       website: "",
       panNoInput: "",
       gstNumber: "",
-      isExporter: "",
+      isExporter: "no" as "yes" | "no",
       iecCode: "",
       reason: "",
       correspondenceAddress: "",
@@ -307,108 +307,66 @@ const ExhibitorRegistration = () => {
     // Do not allow jumping to future, uncompleted steps beyond the next one
   };
 
-  const onSubmitApi = async (formData: {
-    country: any;
-    contactPersonFirstName: any;
-    contactPersonLastName: any;
-    mobileNumber: any;
-    emailAddress: any;
-    nameOfExhibitor: any;
-    companyEmailInput: any;
-    companyPhoneInput: any;
-    addressLine1: any;
-    city: any;
-    stateProvinceRegion: any;
-    postalCode: any;
-    companyPanNoInput: any;
-    hasGstNumber: string;
-    gstNumber: any;
-    directorNameInput: any;
-    boothDisplayName: any;
-    addressLine2: any;
-    alternateMobileNumber: any;
-    alternateEmailAddress: any;
-    website: any;
-    contactPersonDesignation: any;
-    bookingViaAssociation: string;
-    associationNumber: any;
-    registeredWithMsme: string;
-    msmeNumber: any;
-    participatedEarlier: any;
-    productCategory: any;
-    departmentCategory: any;
-    interestedInSponsorship: any;
-    mainObjectives: any;
-    otherObjective: any;
-    boothTypePreference: any;
-    totalAreaRequired: any;
-  }) => {
+  const onSubmitApi = async (formData: z.infer<typeof schema>) => {
     console.log(formData);
+    console.log("Jhugyf");
     setApiMessage({ type: "info", text: "Submitting..." });
     setAmount(totalCost);
     const payload = {
-      firstName: formData.contactPersonFirstName,
-      lastName: formData.contactPersonLastName,
-      phone: formData.mobileNumber,
-      eventId: 157, // As per curl
-      userCohort: "EXHIBITOR", // As per curl
-      image: "imgUrlPlaceholder", // Placeholder or get from form if added
-      email: formData.emailAddress,
-      companyOrganizationName: formData.nameOfExhibitor,
-      companyEmail: formData.companyEmailInput,
-      companyContact: formData.companyPhoneInput,
-      companyAddress: `${formData.addressLine1}, ${formData.city}, ${formData.stateProvinceRegion}, ${formData.postalCode}`,
-      companyPanNo: formData.companyPanNoInput,
-      companyGstin:
-        formData.hasGstNumber === "yes" ? formData.gstNumber : undefined, // Send undefined if not applicable
-      directorName: formData.directorNameInput,
+      firstName: formData.contactPersonFirstName || "",
+      lastName: formData.contactPersonLastName || "",
+      phone: formData.mobile || "",
+      eventId: 146,
+      userCohort: "EXHIBITOR",
+      image: "imgUrlPlaceholder",
+      email: formData.emailAddress || "",
+      companyOrganizationName: formData.companyName || "",
+      companyEmail: formData.emailAddress || "",
+      companyContact: formData.mobile || "",
+      companyAddress: `${formData.addressLine1 || ""}, ${
+        formData.city || ""
+      }, ${formData.stateProvinceRegion || ""}, ${formData.postalCode || ""}`,
+      companyPanNo: formData.panNoInput || "",
+      companyGstin: formData.gstNumber || "",
+      directorName:
+        formData.chiefExecutiveFirstName +
+          " " +
+          formData.chiefExecutiveLastName || "",
       data: {
-        boothDisplayName: formData.boothDisplayName,
-        addressLine1: formData.addressLine1,
-        addressLine2: formData.addressLine2 || undefined,
-        city: formData.city,
-        country: formData.country,
-        stateProvinceRegion: formData.stateProvinceRegion,
-        postalCode: formData.postalCode,
-        hasGstNumber: formData.hasGstNumber,
-        // gstNumber: formData.hasGstNumber === "yes" ? formData.gstNumber : undefined, // Already in companyGstin
-
-        alternateMobileNumber: formData.alternateMobileNumber || undefined,
-        alternateEmailAddress: formData.alternateEmailAddress || undefined,
-        website: formData.website || undefined,
-        contactPersonDesignation: formData.contactPersonDesignation,
-
-        bookingViaAssociation: formData.bookingViaAssociation,
-        associationNumber:
-          formData.bookingViaAssociation === "yes"
-            ? formData.associationNumber
-            : undefined,
-        registeredWithMsme: formData.registeredWithMsme,
-        msmeNumber:
-          formData.registeredWithMsme === "yes"
-            ? formData.msmeNumber
-            : undefined,
-        participatedEarlier: formData.participatedEarlier,
-
-        productCategory: formData.productCategory,
-        departmentCategory: formData.departmentCategory,
-        interestedInSponsorship: formData.interestedInSponsorship,
-        mainObjectives: formData.mainObjectives,
-        otherObjective: formData.otherObjective || undefined,
-
-        boothTypePreference: formData.boothTypePreference,
-        totalAreaRequired: formData.totalAreaRequired, // Already a number due to Zod transform
-        calculatedTotalCost: totalCost, // Send calculated cost
+        boothDisplayName: formData.companyName || "",
+        addressLine1: formData.addressLine1 || "",
+        addressLine2: formData.addressLine2 || "",
+        city: formData.city || "",
+        country: formData.country || "",
+        stateProvinceRegion: formData.stateProvinceRegion || "",
+        postalCode: formData.postalCode || "",
+        hasGstNumber: formData.gstNumber ? "yes" : "no",
+        alternateMobileNumber: formData.alternateMobileNumber || "",
+        alternateEmailAddress: formData.alternateEmailAddress || "",
+        website: formData.website || "",
+        contactPersonDesignation: formData.contactPersonDesignation || "",
+        bookingViaAssociation: "no",
+        associationNumber: "",
+        registeredWithMsme: "no",
+        msmeNumber: "",
+        participatedEarlier: "no",
+        productCategory: "",
+        departmentCategory: "",
+        interestedInSponsorship: "no",
+        mainObjectives: "",
+        otherObjective: "",
+        boothTypePreference: "",
+        totalAreaRequired: formData.areaRequired || "",
+        calculatedTotalCost: totalCost,
       },
     };
 
-    // Clean up undefined optional fields from data object
     for (const key in payload.data) {
-      if (payload.data[key] === undefined) {
+      if (payload.data[key] === undefined || payload.data[key] === "") {
         delete payload.data[key];
       }
     }
-    if (payload.companyGstin === undefined) {
+    if (payload.companyGstin === undefined || payload.companyGstin === "") {
       delete payload.companyGstin;
     }
 
@@ -430,13 +388,13 @@ const ExhibitorRegistration = () => {
         if (result.status === "success") {
           setApiMessage({
             type: "success",
-            text: "Registration Successful! you will be redirected to the payment screen shortly...",
+            text: "Registration Successful!",
           });
-          const timer = setTimeout(() => {
-            navigate(`/payment?email=${formData.companyEmailInput}`); // Navigate to /payment with companyEmail
-          }, 5000);
+          // const timer = setTimeout(() => {
+          //   navigate(`/payment?email=${formData.emailAddress}`);
+          // }, 5000);
 
-          return () => clearTimeout(timer);
+          // return () => clearTimeout(timer);
         } else {
           setApiMessage({
             type: "info",
@@ -699,7 +657,7 @@ const ExhibitorRegistration = () => {
                   <hr className="w-full border-t-1 border-[#B1B1B1] mb-4" />
                   {/* Row 1 */}
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:w-1/2">
+                    {/* <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
                         Profile Photo
                       </label>
@@ -723,7 +681,7 @@ const ExhibitorRegistration = () => {
                           {errors.profilePhoto.message}
                         </p>
                       )}
-                    </div>
+                    </div> */}
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
                         Company/Organization Name*
@@ -772,7 +730,7 @@ const ExhibitorRegistration = () => {
                         Chief Executive First Name*
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         {...register("chiefExecutiveFirstName")}
                         placeholder="Enter Chief Executive First Name"
                         className={`w-full h-13 border bg-white ${
@@ -795,7 +753,7 @@ const ExhibitorRegistration = () => {
                         Chief Executive Last Name*
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         {...register("chiefExecutiveLastName")}
                         placeholder="Enter Chief Executive Last Name*"
                         className={`w-full h-13 border bg-white ${
@@ -815,7 +773,7 @@ const ExhibitorRegistration = () => {
                         Chief Executive Designation*
                       </label>
                       <input
-                        type="email"
+                        type="text"
                         {...register("chiefExecutiveDesignation")}
                         placeholder="Enter Chief Executive Designation*"
                         className={`w-full h-13 border bg-white ${
@@ -838,7 +796,7 @@ const ExhibitorRegistration = () => {
                         Contact Person Title*
                       </label>
                       <input
-                        type="email"
+                        type="text"
                         {...register("contactPersonTitle")}
                         placeholder="Enter Contact Person Title*"
                         className={`w-full h-13 border bg-white ${
@@ -858,7 +816,7 @@ const ExhibitorRegistration = () => {
                         Contact Person First Name*
                       </label>
                       <input
-                        type="url"
+                        type="text"
                         {...register("contactPersonFirstName")}
                         placeholder="Enter Contact Person First Name"
                         className={`w-full h-13 border bg-white ${
@@ -1063,7 +1021,7 @@ const ExhibitorRegistration = () => {
                         Telephone
                       </label>
                       <input
-                        type="email"
+                        type="text"
                         {...register("telephone")}
                         placeholder="Enter Telephone"
                         className={`w-full h-13 border bg-white ${
@@ -1083,7 +1041,7 @@ const ExhibitorRegistration = () => {
                         Fax
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         {...register("fax")}
                         placeholder="Enter Fax"
                         className={`w-full h-13 border bg-white ${
@@ -1104,7 +1062,7 @@ const ExhibitorRegistration = () => {
                         Mobile*
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         {...register("mobile")}
                         placeholder="Enter Mobile"
                         className={`w-full h-13 border bg-white ${
@@ -1123,7 +1081,7 @@ const ExhibitorRegistration = () => {
                         E-Mail*
                       </label>
                       <input
-                        type="email"
+                        type="text"
                         {...register("emailAddress")}
                         placeholder="Enter Email"
                         className={`w-full h-13 border bg-white ${
@@ -1146,7 +1104,7 @@ const ExhibitorRegistration = () => {
                         Alternative Email
                       </label>
                       <input
-                        type="email"
+                        type="text"
                         {...register("alternateEmailAddress")}
                         placeholder="Enter Alternative Email"
                         className={`w-full h-13 border bg-white ${
@@ -1167,7 +1125,7 @@ const ExhibitorRegistration = () => {
                         Website
                       </label>
                       <input
-                        type="url"
+                        type="text"
                         {...register("website")}
                         placeholder="Enter Website"
                         className={`w-full h-13 border bg-white ${
@@ -1375,7 +1333,7 @@ const ExhibitorRegistration = () => {
                         Area Required (in sqmt)
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         {...register("areaRequired")}
                         placeholder="Enter Area Required (in sqmt)"
                         className={`w-full h-13 border bg-white ${
@@ -1395,7 +1353,7 @@ const ExhibitorRegistration = () => {
                         Area of interest
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         {...register("areaOfInterest")}
                         placeholder="Enter Area of interest"
                         className={`w-full h-13 border bg-white ${
@@ -1418,7 +1376,7 @@ const ExhibitorRegistration = () => {
                         List of products
                       </label>
                       <input
-                        type="email"
+                        type="text"
                         {...register("listOfProducts")}
                         placeholder="Enter Chief Executive Designation*"
                         className={`w-full h-13 border bg-white ${
@@ -1480,9 +1438,13 @@ const ExhibitorRegistration = () => {
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
                   className="bg-[#B5207E] self-end w-full lg:w-40 h-14 text-xl cursor-pointer text-white rounded-full px-4 py-2 hover:scale-105 duration-300 disabled:opacity-50"
                   disabled={isSubmitting}
+                  onClick={() => {
+                    const formData = getValues();
+                    onSubmitApi(formData);
+                  }}
                 >
                   {isSubmitting ? "Submitting..." : "Checkout"}
                 </button>
