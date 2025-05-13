@@ -1,0 +1,1 @@
+export const API_URL = 'https://sit.spicetrade.io/api/';

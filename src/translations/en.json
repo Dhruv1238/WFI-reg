@@ -1,0 +1,414 @@
+{
+  "navbar": {
+    "home": "HOME",
+    "about": "ABOUT WFI",
+    "sessions": "SESSIONS",
+    "exhibitors": "EXHIBITORS",
+    "buyers": "BUYERS",
+    "news": "NEWS & EVENTS",
+    "knowledge": "KNOWLEDGE CENTRE",
+    "travel": "PLAN YOUR TRAVEL",
+    "contact": "CONTACT US"
+  },
+  "buttons": {
+    "registerNow": "Register Now",
+    "language": "हिंदी"
+  },
+  "venue": {
+    "title": "Venue & Date",
+    "location": "Bharat Mandapam, Pragati Maidan, New Delhi, India",
+    "date": "25th - 28th September 2025"
+  },
+  "common": {
+    "readMore": "Read More",
+    "viewAll": "View All",
+    "learnMore": "Learn More"
+  },
+  "social": {
+    "findUsOn": "Find us on",
+    "title": "Voices, Moments & Buzz: Straight from Socials",
+    "subtitle": "WFI Social Media"
+  },
+  "dropdown": {
+    "about": {
+      "keyElements": "Key elements",
+      "exhibitorDirectory": "Show Exhibitor Directory",
+      "whoShouldAttend": "Who should attend",
+      "howToReach": "How to reach",
+      "pastEvent": "Past event snapshot",
+      "industryStats": "Industry Statistics",
+      "faq": "FAQ"
+    },
+    "sessions": {
+      "agenda": "Agenda",
+      "thematicSessions": "Thematic Sessions",
+      "stateSessions": "State Sessions",
+      "countrySessions": "Country Sessions",
+      "speakers": "Speakers"
+    },
+    "exhibitors": {
+      "whyExhibit": "Why Exhibit",
+      "whoCanExhibit": "Who Can Exhibit",
+      "zonesLayout": "Zones & Layout",
+      "boothOptions": "Booth Options & Pricing",
+      "registration": "Exhibitor Registration",
+      "portal": "Exhibitor portal"
+    },
+    "buyers": {
+      "whyAttend": "Why Attend",
+      "rbsm": "Reverse Buyer-Seller Meet (RBSM)",
+      "products": "Products at WFI"
+    },
+    "news": {
+      "pressReleases": "Press Releases",
+      "mediaCoverage": "Media Coverage",
+      "roadshows": "Event Roadshows",
+      "download": "Download (Media kit, logos, brochures)"
+    },
+    "knowledge": {
+      "centre": "Knowledge Centre",
+      "archive": "Archive"
+    },
+    "travel": {
+      "howToReach": "How to reach",
+      "bookCab": "Book a cab",
+      "hotel": "Hotel & Accommodation"
+    }
+  },
+  "focusPillars": {
+    "title": "Our Core Focus Pillar",
+    "pillars": {
+      "sustainability": {
+        "title": "Sustainability and Net Zero Food Processing",
+        "points": [
+          "India targets net-zero carbon emissions by 2070 through sustainable food processing.",
+          "Food processing is key to climate-resilient and resource-efficient systems.",
+          "Initiatives like PMKSY, Green Food Processing Fund, and PLI support green growth.",
+          "Industry adopts solar-dried units, biomass cold chains, and water-neutral plants.",
+          "Circular practices include food waste valorisation and sustainable packaging.",
+          "World Food India 2025 showcases innovations in low-carbon food value chains."
+        ]
+      },
+      "global": {
+        "title": "India as Global Food Processing Hub",
+        "points": [
+          "India is a global leader in the production of milk, millets, pulses, fruits, and vegetables.",
+          "Second largest producer of fruits, vegetables, and cereals",
+          "Abundant raw materials make India ideal for food processing and value addition.",
+          "The sector benefits from supportive policies and 100% FDI via the automatic route.",
+          "Conducive schemes like Production linked incentive (PLI), Pradhan Mantri Kisan Sampada Yojana (PMKSY) promote expansion and competitiveness in food processing.",
+          "India offers unparalleled access to raw materials for value addition"
+        ]
+      },
+      "innovation": {
+        "title": "Innovation in Food Processing and Packaging Technology",
+        "points": [
+          "India is advancing smart food processing with technologies like high-pressure processing, cold plasma, and non-thermal pasteurisation.",
+          "Smart packaging with QR codes and blockchain ensures product traceability and boosts export transparency.",
+          "India's National Agri Stack aims to integrate food processing data to enable seamless backward-forward linkages",
+          "Active and intelligent packaging leading the development of bio-active packaging"
+        ]
+      },
+      "nutrition": {
+        "title": "Processed food for Nutrition and Health",
+        "points": [
+          "Fortiﬁed, functional, and clean-label nutrition formats",
+          "Embracing functional foods with added health benefits like gut health, immunity, and low-GI support",
+          "Transforming food processing into a driver of national nutrition and global health leadership",
+          "Food technology parks and startups focused on AI-assisted nutrition labelling, bio-fortiﬁcation tracking"
+        ]
+      },
+      "livestock": {
+        "title": "Indian Livestock Products accelerating the Rural Economy",
+        "points": [
+          "Livestock and marine sectors drive rural incomes and employment.",
+          "Government schemes support small-scale producers and enhance value addition.",
+          "Infrastructure development boosts market access and food processing.",
+          "Modern technologies improve efficiency in rural operations.",
+          "These sectors enhance nutrition and open global export opportunities."
+        ]
+      }
+    }
+  },
+  "keyHighlights": {
+    "title": "Key Highlights of World Food India 2024",
+    "highlights": [
+      {
+        "label": "Visitors",
+        "number": "85K"
+      },
+      {
+        "label": "sq. m. Gross Exhibition Area",
+        "number": "70K"
+      },
+      {
+        "label": "Exhibitors",
+        "number": "1.5K"
+      },
+      {
+        "label": "Country Pavilions",
+        "number": "20"
+      },
+      {
+        "label": "International Buyers from 90 Countries",
+        "number": "809"
+      },
+      {
+        "label": "B2B/G Discussions",
+        "number": "8.1K"
+      }
+    ]
+  },
+  "partners": {
+    "homeTitle": "World Food India Partners 2025",
+    "pageTitle": "PARTNERS",
+    "filter": "Filter",
+    "title": "Partners 2025",
+    "sections": {
+      "partnerMinistries": "Partners Ministries",
+      "goldPartners": "Gold Partners"
+    },
+    "categories": {
+      "PartnerMinistries": "Partner Ministries",
+      "PartnerStates": "Partner States",
+      "FocusStates": "Focus States",
+      "AssociateDepartments": "Associate Departments",
+      "PlatinumPartners": "Platinum Partners",
+      "DiamondPartner": "Diamond Partner",
+      "GoldPartners": "Gold Partners",
+      "NetworkingDinnerPartner": "Networking Dinner Partner",
+      "SilverPartners": "Silver Partners",
+      "VisitorBagPartner": "Visitor Bag Partner",
+      "BadgePartner": "Badge Partner",
+      "LanyardPartner": "Lanyard Partner",
+      "BankingPartner": "Banking Partner",
+      "BeveragePartner": "Beverage Partner",
+      "HydrationPartner": "Hydration Partner",
+      "RegistrationBoothPartner": "Registration Booth Partner",
+      "AppliancePartner": "Appliance Partner",
+      "QualityCertificationPartner": "Quality Certification Partner",
+      "E-RetailPartner": "E-Retail Partner",
+      "AssociationPartners": "Association Partners",
+      "NationalEventPartner": "National Event Partner",
+      "InvestmentFacilitationandKnowledgePartner": "Investment Facilitation and Knowledge Partner"
+    },
+    "description": "World Food India 2025 will bring together key partners, including central ministries, state governments, industry associations, leading corporates and international organizations. These partnerships are instrumental in shaping policy, driving innovation, and showcasing India's food processing potential. The collaboration ensures a unified platform to promote investment, technology, and sustainable growth in the sector.",
+    "readMore": "Read More"
+  },
+  "wfi": {
+    "title": "WORLD FOOD INDIA",
+    "subtitle": "World Food India 2025 is a gateway to the Indian food economy, facilitating partnerships between Indian and foreign investors.",
+    "description": "World Food India serves as a premier gateway to India's thriving food economy, uniting key players across processing, packaging, logistics, and technology under one platform. It enables meaningful engagement, fosters investment opportunities, and drives innovation across the sector. The event showcases India's potential as a global hub for value-added food manufacturing and trade.",
+    "readMore": "Read More"
+  },
+  "whyWFI": {
+    "heading": "Why World Food India?",
+    "registerNow": "Register Now",
+    "tabs": {
+      "exhibitor": {
+        "title": "For Exhibitor",
+        "subtitle": "FOR EXHIBITORS",
+        "content": "Spread across 50,000 sq. m. of premium space at Pragati Maidan, World Food India 2023 brings together leading global and Indian companies from the food processing and allied sectors. With dedicated sectoral focus, international country pavilions, and state showcases highlighting products, agri-horti clusters, infrastructure, and policies, the exhibition offers a dynamic platform to explore business opportunities, forge global partnerships, and connect with key stakeholders to drive growth and investment."
+      },
+      "investors": {
+        "title": "For Investors",
+        "subtitle": "FOR INVESTORS",
+        "content": "World Food India 2025 serves as a strategic platform for investors seeking to tap into one of the world's fastest-growing food economies. With India's vast agricultural base, rising consumer demand, and progressive policy support—including 100% FDI in food processing—investors can explore scalable opportunities across segments like processing, packaging, cold chain, logistics, and sustainable technologies. The event enables direct engagement with policymakers, state governments, and industry leaders, facilitating informed investment decisions and long-term partnerships."
+      },
+      "buyers": {
+        "title": "For Buyers Sellers",
+        "subtitle": "FOR BUYERS SELLERS",
+        "content": "Connect with global buyers, sellers, and industry leaders at World Food India 2025. Explore new markets, discover innovative products and technologies, and build lasting partnerships through curated B2B meetings and networking opportunities. One platform. Endless opportunities."
+      },
+      "showcase": {
+        "title": "To Showcase",
+        "subtitle": "TO SHOWCASE",
+        "content": "World Food India 2025 offers a powerful platform to showcase innovative solutions, strengthen market presence, and align with India's vision of becoming a global food processing hub. Exhibitors gain visibility, access emerging opportunities, and contribute to advancing sustainable, efficient, and technology-driven growth in the sector."
+      }
+    }
+  },
+  "speakers": {
+    "heading": "Speakers of WFI 2025",
+    "subheading": "Discover the visionaries driving transformative conversations in agri-tech, food processing, sustainability, investment, and beyond.",
+    "viewAll": "View All",
+    "pageTitle": "CONFERENCE"
+  },
+  "industryLeaders": {
+    "heading": "VOICES OF SUCCESS!",
+    "subheading": "INSIGHTS FROM VISIONARIES"
+  },
+  "footer": {
+    "downloadApp": "Download the app by clicking the link below :",
+    "navigation": {
+      "home": "HOME",
+      "about": "ABOUT",
+      "exhibition": "EXHIBITION",
+      "conference": "CONFERENCE",
+      "investor": "INVESTOR",
+      "knowledgeCentre": "KNOWLEDGE CENTRE",
+      "archive": "ARCHIVE SECTION",
+      "contact": "CONTACT US"
+    },
+    "copyright": "© worldfoodindia.gov.in, All Rights Reserved. |",
+    "terms": "Terms and Conditions",
+    "privacy": "Privacy Policy"
+  },
+  "aboutWFI": {
+    "title": {
+      "world": "World",
+      "foodIndia": "Food India"
+    },
+    "year": {
+      "first": "20",
+      "second": "25"
+    },
+    "paragraph1": "Recognizing the transformative potential of the food processing sector in positioning India as a global food hub, the Ministry of Food Processing Industries (MoFPI), Government of India, has introduced a range of strategic initiatives to attract investment across diverse sub-segments. These efforts focus on strengthening farm-to-fork linkages, enhancing value addition, advancing research and development, expanding cold chain infrastructure, and supporting startups, logistics, and retail ecosystems—laying the foundation for a robust and future-ready food processing industry.",
+    "paragraph2": "To further promote India's rich and diverse food culture while fostering global investment, MoFPI launched World Food India (WFI)—a flagship international event. The first edition was held in 2017, followed by a successful second edition in 2023 and the third in 2024. WFI serves as a premier platform for stakeholders from across the world to connect, collaborate, and explore opportunities in India's dynamic food processing landscape. Building on the remarkable success of previous editions, 4th edition of this flagship event has been scheduled to take place from 25th to 28th September 2025 at Bharat Mandapam, New Delhi."
+  },
+  "howToReach": {
+    "title": "How To Reach?"
+  },
+  "keyElements": {
+    "title": "Key Elements of World Food India",
+    "elements": [
+      {
+        "title": "Policy Roundtables",
+        "description": [
+          "Showcasing opportunities",
+          "State & UT, Country, Ministry pavilions",
+          "Product-wise pavilions",
+          "Specialized zones for Pet Food, HoReCa, Alcoholic Beverages & Post-harvest Machinery"
+        ]
+      },
+      {
+        "title": "Exhibition",
+        "description": [
+          "Showcasing opportunities",
+          "State & UT, Country, Ministry pavilions",
+          "Product-wise pavilions",
+          "Specialized zones for Pet Food, HoReCa, Alcoholic Beverages & Post-harvest Machinery"
+        ]
+      },
+      {
+        "title": "Conferences & Knowledge Sessions",
+        "description": [
+          "Industry expert panels",
+          "Knowledge sharing sessions",
+          "Latest trends and innovations",
+          "Technical workshops"
+        ]
+      },
+      {
+        "title": "Digital Showcase",
+        "description": [
+          "Virtual exhibitions",
+          "Online networking platform",
+          "Digital product displays",
+          "Interactive presentations"
+        ]
+      },
+      {
+        "title": "Great Indian Food Street",
+        "description": [
+          "Regional cuisines",
+          "Live cooking demonstrations",
+          "Food tasting sessions",
+          "Cultural food experiences"
+        ]
+      },
+      {
+        "title": "Start-Up Grand Challenge",
+        "description": [
+          "Innovation showcase",
+          "Pitch competitions",
+          "Mentorship opportunities",
+          "Funding connections"
+        ]
+      },
+      {
+        "title": "B2B / B2G / G2G Meetings",
+        "description": [
+          "Direct business connections",
+          "Government partnerships",
+          "International collaborations",
+          "Strategic alliances"
+        ]
+      },
+      {
+        "title": "Industry Roundtables With Policy Makers",
+        "description": [
+          "Policy discussions",
+          "Industry insights",
+          "Regulatory updates",
+          "Strategic planning"
+        ]
+      },
+      {
+        "title": "Awards",
+        "description": [
+          "Industry recognition",
+          "Excellence awards",
+          "Innovation highlights",
+          "Achievement celebration"
+        ]
+      }
+    ]
+  },
+  "pastSnapshots": {
+    "title": {
+      "line1": "WORLD FOOD INDIA 2024 PAST EVENT SNAPSHOTS",
+      "line2": "SNAPSHOTS"
+    }
+  },
+  "aboutPage": {
+    "header": {
+      "line1": "KNOW MORE ABOUT",
+      "line2": "WORLD FOOD INDIA"
+    }
+  },
+  "whoShouldAttend": {
+    "title": "Who Should Attend?",
+    "attendees": [
+      {
+        "title": "Ingredient Manufacturers"
+      },
+      {
+        "title": "Food Processing & Manufacturing Companies"
+      },
+      {
+        "title": "Trade & Media Partners"
+      },
+      {
+        "title": "Financial Institutions"
+      },
+      {
+        "title": "Exporters & Importers of Food Products"
+      },
+      {
+        "title": "Food Startups & Innovators"
+      }
+    ]
+  },
+  "rbsm": {
+    "title": "Reverse Buyer Seller Meet (RBSM)",
+    "description": "Experience the pinnacle of business networking at World Food India 2024 through the Reverse Buyer Seller Meet planned by the Ministry of Food Processing Industries (MoFPI). The RBSM will witness a seamless collaboration as all these Commodity boards converge for a combined effort to make the event a grand success. The meet will offer an array of advantages, including enhanced market access, interactions with potential partners, exposure to new products and innovations, insightful discussions on industry trends, and the creation of valuable B2B connections. This will be an exclusive opportunity to forge lasting business relationships and explore new horizons in the food industry.",
+    "imageAlt": "Business people high-fiving"
+  },
+  "events": {
+    "past": "Past Events",
+    "upcoming": "Upcoming Events"
+  },
+  "conference": {
+    "thematicSessions": "Thematic Sessions",
+    "filter": "Filter",
+    "sessionDate": "Session Date",
+    "sessionTime": "Session Time",
+    "meetingRoom": "Meeting Room",
+    "enterRoomNumber": "Enter room number"
+  },
+  "conferencePage": {
+    "header": "SESSIONS",
+    "eventAgenda": "4 Days Event Agenda",
+    "registerNow": "Register Now"
+  }
+}
