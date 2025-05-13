@@ -22,14 +22,13 @@ const Header = () => {
     i18n.changeLanguage(newLang);
   };
 
-  // const isActive = (path) => {
-  //   if (path === "/") {
-  //     return location.pathname === "/";
-  //   }
-  //   return location.pathname.startsWith(path);
-  // };
+  const isActive = (path) => {
+    return false;
+  };
 
-  const navItems = [
+  const baseLink = "https://incandescent-hotteok-21e835.netlify.app";
+
+  let navItems = [
     { title: "HOME", path: "/" },
     {
       title: "ABOUT WFI",
@@ -124,6 +123,20 @@ const Header = () => {
     { title: "CONTACT US", path: "/contact" },
   ];
 
+  navItems = navItems.map((item) => {
+    const updatedItem = {
+      ...item,
+      path: baseLink + item.path,
+    };
+    if (item.dropdownItems) {
+      updatedItem.dropdownItems = item.dropdownItems.map((subItem) => ({
+        ...subItem,
+        path: baseLink + subItem.path,
+      }));
+    }
+    return updatedItem;
+  });
+
   return (
     <>
       {isOpen && (
@@ -217,9 +230,7 @@ const Header = () => {
                 />
               </svg>
               <p className="text-xs">
-                Venue & Date : Bharat Mandapam,
-                <br />
-                Pragati Maidan, New Delhi, India
+                Venue & Date : Bharat Mandapam, Pragati Maidan, New Delhi, India
                 <br />
                 <span className="font-semibold">
                   25th - 28th September 2025
@@ -234,7 +245,11 @@ const Header = () => {
                 <div className="flex items-center justify-between py-2 cursor-pointer">
                   <a
                     href={item.path}
-                    className={`text-sm font-medium transition-colors duration-200`}
+                    className={`text-sm font-medium transition-colors duration-200 ${
+                      isActive(item.path)
+                        ? "text-[#961E7C] relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-full after:bg-[#961E7C]"
+                        : "text-gray-900 hover:text-[#961E7C]"
+                    }`}
                     onClick={() => {
                       setIsOpen(false);
                     }}
@@ -246,7 +261,9 @@ const Header = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       className={`h-4 w-4 transform transition-transform duration-200 ${
                         activeDropdown === index ? "rotate-180" : ""
-                      } `}
+                      } ${
+                        isActive(item.path) ? "text-[#961E7C]" : "text-gray-900"
+                      }`}
                       onClick={() =>
                         setActiveDropdown(
                           activeDropdown === index ? null : index
@@ -460,10 +477,18 @@ const Header = () => {
                   >
                     <a
                       href={item.path}
-                      className={`px-2 py-2 text-center text-[0.7rem] xl:text-sm font-medium transition-colors duration-200 group flex items-center gap-1 `}
+                      className={`px-2 py-2 text-center text-[0.7rem] xl:text-sm font-medium transition-colors duration-200 group flex items-center gap-1 ${
+                        isActive(item.path)
+                          ? "text-[#961E7C]"
+                          : "hover:text-[#961E7C]"
+                      }`}
                     >
                       <span
-                        className={`relative inline-block after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-full after:origin-left after:transform after:bg-[#961E7C] after:transition-transform after:duration-300 after:ease-out`}
+                        className={`relative inline-block after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-full after:origin-left after:transform after:bg-[#961E7C] after:transition-transform after:duration-300 after:ease-out ${
+                          isActive(item.path)
+                            ? "after:scale-x-100"
+                            : "after:scale-x-0 group-hover:after:scale-x-100"
+                        }`}
                       >
                         {item.title}
                       </span>

@@ -26,14 +26,13 @@ const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]{1}/; // Basic PAN regex
 const schema = z
   .object({
     // Step 1: Contact Information
-    // profilePhoto: z
-    //   .any()
-    //   .optional()
-    //   .refine(
-    //     (file) =>
-    //       !file || (file instanceof File && file.type.startsWith("image/")),
-    //     "Please upload a valid image file"
-    //   ),
+    profilePhoto: z
+      .any()
+      .refine(
+        (file) =>
+          !file || (file instanceof File && file.type.startsWith("image/")),
+        "Please upload a valid image file"
+      ),
     companyName: z.string().min(1, "Company/Organization Name is required"),
     chiefExecutiveTitle: z.string().min(1, "Chief Executive Title is required"),
     chiefExecutiveFirstName: z
@@ -55,12 +54,6 @@ const schema = z
     contactPersonDesignation: z
       .string()
       .min(1, "Contact Person Designation is required"),
-    mobileNumber: z.string().regex(phoneRegex, "Invalid mobile number"),
-    alternateMobileNumber: z
-      .string()
-      .regex(phoneRegex, "Invalid alternate mobile number")
-      .optional()
-      .or(z.literal("")),
 
     // Step 2: Contact Details
     addressLine1: z.string().min(1, "Address Line 1 is required"),
@@ -71,17 +64,20 @@ const schema = z
     postalCode: z.string().min(1, "Postal Code is required"),
     telephone: z.string().min(1, "Telephone is required"),
     fax: z.string().min(1, "Fax is required"),
-    mobile: z.string().regex(phoneRegex, "Invalid mobile number"),
+    mobile: z
+      .string()
+      .min(1, "Mobile Number is required")
+      .regex(phoneRegex, "Invalid mobile number"),
     emailAddress: z
       .string()
-      .email("Invalid email address")
-      .min(1, "Email Address is required"),
-    alternateEmailAddress: z.string().email("Invalid email address").optional(),
+      .min(1, "Email Address is required")
+      .email("Invalid email address"),
+    alternateEmailAddress: z.string().optional(),
     website: z.string().optional(),
     panNoInput: z
       .string()
-      .regex(panRegex, "Invalid PAN format")
-      .min(1, "Company PAN is required"),
+      .min(1, "PAN is required")
+      .regex(panRegex, "Invalid PAN format"),
     gstNumber: z.string().min(1, "GST Number is required"),
     isExporter: z.enum(["yes", "no"], {
       required_error: "Please select ",
@@ -112,7 +108,7 @@ const schema = z
 // Define fields for each step to trigger validation
 const stepFields = {
   1: [
-    // "profilePhoto",
+    "profilePhoto",
     "companyName",
     "chiefExecutiveTitle",
     "chiefExecutiveFirstName",
@@ -177,7 +173,7 @@ const ExhibitorRegistration = () => {
     resolver: zodResolver(schema),
     mode: "onChange", // Validate on change for better UX
     defaultValues: {
-      // profilePhoto: undefined,
+      profilePhoto: undefined,
       companyName: "",
       chiefExecutiveTitle: "",
       chiefExecutiveFirstName: "",
@@ -187,8 +183,6 @@ const ExhibitorRegistration = () => {
       contactPersonFirstName: "",
       contactPersonLastName: "",
       contactPersonDesignation: "",
-      mobileNumber: "",
-      alternateMobileNumber: "",
 
       // Step 2: Corporate Address
       addressLine1: "",
@@ -205,7 +199,7 @@ const ExhibitorRegistration = () => {
       website: "",
       panNoInput: "",
       gstNumber: "",
-      isExporter: "no" as "yes" | "no",
+      isExporter: "",
       iecCode: "",
       reason: "",
       correspondenceAddress: "",
@@ -657,7 +651,7 @@ const ExhibitorRegistration = () => {
                   <hr className="w-full border-t-1 border-[#B1B1B1] mb-4" />
                   {/* Row 1 */}
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    {/* <div className="mb-4 w-full md:w-1/2">
+                    <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
                         Profile Photo
                       </label>
@@ -681,7 +675,7 @@ const ExhibitorRegistration = () => {
                           {errors.profilePhoto.message}
                         </p>
                       )}
-                    </div> */}
+                    </div>
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
                         Company/Organization Name*
