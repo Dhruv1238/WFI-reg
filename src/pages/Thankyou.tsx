@@ -5,9 +5,7 @@ const Thankyou = () => {
         <div className="tick-mark-circle">
           <div className="tick-mark">&#10003;</div>
         </div>
-        <p className="text-center mt-4">
-          Payment completed. You will get a mail for further processing.
-        </p>
+        <p className="text-center mt-4">Thank You for your registration.</p>
       </div>
     </div>
   );

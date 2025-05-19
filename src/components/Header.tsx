@@ -392,7 +392,10 @@ const Header = () => {
             {/* Logo */}
             <div className="flex items-center space-x-9">
               <div className="flex-shrink-0">
-                <a href="/" className="flex items-center">
+                <a
+                  href="https://incandescent-hotteok-21e835.netlify.app"
+                  className="flex items-center"
+                >
                   <img
                     src="/black_logo-new.png"
                     alt="World Food India"

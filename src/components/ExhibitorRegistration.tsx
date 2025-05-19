@@ -1,6 +1,7 @@
 import { useState, useEffect, SetStateAction, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { z } from "zod";
 import Timeline from "@mui/lab/Timeline";
 import TimelineItem, { timelineItemClasses } from "@mui/lab/TimelineItem";
@@ -9,6 +10,19 @@ import TimelineConnector from "@mui/lab/TimelineConnector";
 import TimelineContent from "@mui/lab/TimelineContent";
 import TimelineDot from "@mui/lab/TimelineDot";
 import CheckIcon from "@mui/icons-material/Check";
+import Autocomplete from "@mui/material/Autocomplete";
+import TextField from "@mui/material/TextField";
+import Box from "@mui/material/Box";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/material.css";
+import {
+  Country,
+  State,
+  City,
+  ICountry,
+  IState,
+  ICity,
+} from "country-state-city";
 import { useNavigate } from "react-router-dom";
 import { usePrice } from "../context/Price";
 import {
@@ -19,12 +33,32 @@ import {
 
 import "react-country-state-city/dist/react-country-state-city.css";
 import { Typography } from "@mui/material";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DeleteIcon from "@mui/icons-material/Delete";
+
 // Define Zod schema for validation
 const phoneRegex = /^[+]?[0-9]{10,15}$/; // Basic phone regex, adjust as needed
-const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]{1}/; // Basic PAN regex
+const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/; // Basic PAN regex
+const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
+
+let formData = { isExporter: "", recommendedBy: "", scheme: "" };
 
 const schema = z
   .object({
+    // Step 1: Referral Information
+    recommendedBy: z.string().min(1, "Please select who recommended you"),
+    profileBrief: z
+      .string()
+      .min(1, "Please provide a profile brief")
+      .refine((val) => {
+        const wordCount = val
+          .trim()
+          .split(/\s+/)
+          .filter((word) => word.length > 0).length;
+        return wordCount <= 200;
+      }, "Profile brief must not exceed 200 words"),
     // Step 1: Contact Information
     profilePhoto: z
       .any()
@@ -32,19 +66,15 @@ const schema = z
         (file) =>
           !file || (file instanceof File && file.type.startsWith("image/")),
         "Please upload a valid image file"
+      )
+      .refine(
+        (file) => !file || (file instanceof File && file.size <= MAX_FILE_SIZE),
+        "File size should be less than 5MB"
       ),
     companyName: z.string().min(1, "Company/Organization Name is required"),
-    chiefExecutiveTitle: z.string().min(1, "Chief Executive Title is required"),
-    chiefExecutiveFirstName: z
-      .string()
-      .min(1, "Chief Executive First Name is required"),
-    chiefExecutiveLastName: z
-      .string()
-      .min(1, "Chief Executive Last Name is required"),
-    chiefExecutiveDesignation: z
-      .string()
-      .min(1, "Chief Executive Designation is required"),
-    contactPersonTitle: z.string().min(1, "Contact Person Title is required"),
+    contactPersonTitle: z.enum(["Mr", "Mrs", "Ms", "Dr", "Prof"], {
+      required_error: "Please select a title",
+    }),
     contactPersonFirstName: z
       .string()
       .min(1, "Contact Person First Name is required"),
@@ -62,8 +92,7 @@ const schema = z
     stateProvinceRegion: z.string().min(1, "State/Province/Region is required"),
     city: z.string().min(1, "City is required"),
     postalCode: z.string().min(1, "Postal Code is required"),
-    telephone: z.string().min(1, "Telephone is required"),
-    fax: z.string().min(1, "Fax is required"),
+    telephone: z.string().optional(),
     mobile: z
       .string()
       .min(1, "Mobile Number is required")
@@ -77,49 +106,157 @@ const schema = z
     panNoInput: z
       .string()
       .min(1, "PAN is required")
-      .regex(panRegex, "Invalid PAN format"),
-    gstNumber: z.string().min(1, "GST Number is required"),
+      .refine((val) => {
+        return panRegex.test(val);
+      }, "Invalid PAN number "),
+    gstNumber: z.string().refine((val) => {
+      if (!val) return true;
+      return gstRegex.test(val);
+    }, "Invalid GST number "),
+    hasNoGst: z.boolean(),
+    gstFile: z
+      .any()
+      .refine(
+        (file) =>
+          !file ||
+          (file instanceof File &&
+            (file.type === "application/pdf" ||
+              file.type.startsWith("image/"))),
+        "Please upload a valid PDF or image file"
+      )
+      .refine(
+        (file) => !file || (file instanceof File && file.size <= MAX_FILE_SIZE),
+        "File size should be less than 5MB"
+      ),
     isExporter: z.enum(["yes", "no"], {
       required_error: "Please select ",
     }),
-    iecCode: z.string().optional(),
-    reason: z.string().optional(),
+    iecCode: z.string().refine((val) => {
+      if (formData.isExporter === "yes") {
+        return val && val.length > 0;
+      }
+      return true;
+    }, "IEC Code is required when you are an exporter"),
     correspondenceAddress: z.string().optional(),
+    billingAddressLine1: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (formData.recommendedBy === "Sea food export association") {
+          return true;
+        }
+        return val && val.length > 0;
+      }, "Billing Address Line 1 is required"),
+    billingAddressLine2: z.string().optional(),
+    billingCity: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (formData.recommendedBy === "Sea food export association") {
+          return true;
+        }
+        return val && val.length > 0;
+      }, "Billing City is required"),
+    billingCountry: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (formData.recommendedBy === "Sea food export association") {
+          return true;
+        }
+        return val && val.length > 0;
+      }, "Billing Country is required"),
+    billingStateProvinceRegion: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (formData.recommendedBy === "Sea food export association") {
+          return true;
+        }
+        return val && val.length > 0;
+      }, "Billing State/Province/Region is required"),
+    billingPostalCode: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (formData.recommendedBy === "Sea food export association") {
+          return true;
+        }
+        return val && val.length > 0;
+      }, "Billing Postal Code is required"),
 
     // Step 3: Exhibitor Information
-    hallNo: z.string().optional(),
-    stallNo: z.string().optional(),
-    areaRequired: z.string().optional(),
+    hallNo: z.string().min(1, "Hall No. is required"),
+    stallNo: z.string().min(1, "Stall No. is required"),
+    areaRequired: z
+      .string()
+      .min(1, "Area Required is required")
+      .refine(
+        (val) => {
+          const numVal = Number(val);
+          if (formData.scheme === "bare") {
+            return !isNaN(numVal) && numVal >= 6;
+          }
+          return true;
+        },
+        {
+          message: "For Bare scheme, area must be at least 6 square meters",
+        }
+      )
+      .refine(
+        (val) => {
+          const numVal = Number(val);
+          if (formData.scheme === "shell") {
+            return !isNaN(numVal) && numVal >= 6;
+          }
+          return true;
+        },
+        {
+          message: "For Shell scheme, area must be at least 6 square meters",
+        }
+      )
+      .transform((val) => Number(val)),
     areaOfInterest: z.string().optional(),
-    listOfProducts: z.string().optional(),
+    productCategory: z
+      .array(z.string())
+      .min(1, "At least one Product Category is required"),
+    productSubCategory: z
+      .array(z.string())
+      .min(1, "At least one Product Sub-Category is required"),
+    scheme: z.enum(["bare", "shell"], {
+      required_error: "Please select a scheme",
+    }),
+    termsAccepted: z.boolean().refine((val) => val === true, {
+      message: "You must accept the terms and conditions to proceed",
+    }),
   })
   .refine(
-    (data) =>
-      !(
-        data.isExporter === "yes" &&
-        (!data.iecCode || data.iecCode.trim() === "")
-      ),
+    (data) => {
+      return (
+        data.hasNoGst === true ||
+        (data.gstNumber && gstRegex.test(data.gstNumber))
+      );
+    },
     {
-      message: "IEC Code is required if you select 'Yes'",
-      path: ["iecCode"],
+      message:
+        "Either provide a valid GST number or check 'I do not have a GST certificate'",
+      path: ["gstNumber"],
     }
   );
 
 // Define fields for each step to trigger validation
 const stepFields = {
-  1: [
+  1: ["recommendedBy"],
+  2: [
     "profilePhoto",
     "companyName",
-    "chiefExecutiveTitle",
-    "chiefExecutiveFirstName",
-    "chiefExecutiveLastName",
-    "chiefExecutiveDesignation",
     "contactPersonTitle",
     "contactPersonFirstName",
     "contactPersonLastName",
     "contactPersonDesignation",
+    "profileBrief",
   ],
-  2: [
+  3: [
     "addressLine1",
     "addressLine2",
     "country",
@@ -127,26 +264,255 @@ const stepFields = {
     "city",
     "postalCode",
     "telephone",
-    "fax",
     "mobile",
     "emailAddress",
     "alternateEmailAddress",
     "website",
     "panNoInput",
+    "hasNoGst",
     "gstNumber",
+    "gstFile",
     "isExporter",
     "iecCode",
-    "reason",
     "correspondenceAddress",
+    "billingAddressLine1",
+    "billingAddressLine2",
+    "billingCity",
+    "billingCountry",
+    "billingStateProvinceRegion",
+    "billingPostalCode",
   ],
-  3: ["hallNo", "stallNo", "areaRequired", "areaOfInterest", "listOfProducts"],
+  4: [
+    "hallNo",
+    "stallNo",
+    "areaRequired",
+    "areaOfInterest",
+    "productCategory",
+    "productSubCategory",
+    "scheme",
+    "termsAccepted",
+  ],
+};
+
+interface FilePreview {
+  file: File;
+  preview: string;
+}
+
+const FileUploadBox = ({
+  label,
+  accept,
+  error,
+  onChange,
+  preview,
+  onDelete,
+  helperText,
+  errorMessage,
+  disabled,
+}: {
+  label: string;
+  accept: string;
+  error?: boolean;
+  onChange: (file: File) => void;
+  preview?: string;
+  onDelete?: () => void;
+  helperText?: string;
+  errorMessage?: string;
+  disabled: boolean;
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [localError, setLocalError] = useState<string>();
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragIn = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOut = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const validateAndHandleFile = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      setLocalError("File size should be less than 5MB");
+      return;
+    }
+    setLocalError(undefined);
+    onChange(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files?.length) {
+      const file = files[0];
+      if (file.type.match(accept.replace(/\*/g, ".*"))) {
+        validateAndHandleFile(file);
+      }
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <label className="block text-gray-700 font-medium mb-2">{label}</label>
+      <div
+        className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer
+          ${
+            isDragging
+              ? "border-[#B5207E] bg-pink-50"
+              : error
+              ? "border-red-500"
+              : "border-gray-300"
+          }
+          ${
+            preview ? "bg-gray-50" : "hover:bg-gray-50"
+          } transition-colors duration-200`}
+        onDragEnter={handleDragIn}
+        onDragLeave={handleDragOut}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {preview ? (
+          <div className="relative">
+            <img
+              src={preview}
+              alt="Preview"
+              className="max-h-32 mx-auto rounded"
+            />
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                  setLocalError(undefined);
+                }}
+                className="absolute top-0 right-0 p-1 bg-[#B5207E] text-white rounded-full hover:bg-red-600 transition-colors"
+              >
+                <DeleteIcon fontSize="small" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2 py-4">
+            <CloudUploadIcon sx={{ fontSize: 40, color: "#B5207E" }} />
+            <div className="text-sm text-gray-600">
+              Drag and drop your file here or click to browse
+            </div>
+            <div className="text-xs text-gray-500">{helperText}</div>
+          </div>
+        )}
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) validateAndHandleFile(file);
+        }}
+        className="hidden"
+      />
+      {(localError || errorMessage) && (
+        <p className="text-red-500 text-sm mt-1">
+          {localError || errorMessage}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const hallOptions = {
+  groundFloor: ["Hall 2", "Hall 3", "Hall 4", "Hall 5", "Hall 6", "Hall 14"],
+  firstFloor: ["Hall 2", "Hall 3", "Hall 4", "Hall 5"],
+  hangers: ["Hanger 1", "Hanger 2", "Hanger 3"],
+};
+
+const productList = {
+  "Agri Products": [
+    "Fresh and Natural Products",
+    "Raw Materials eg. Rice,Pulses.",
+  ],
+  "Meat and Poultry": [
+    "Meat Products",
+    "Preserves Containing Meat",
+    "Meat-based convenience products",
+    "Poultry Products",
+    "Halal Food",
+  ],
+  "Plant Based": ["Plant Based."],
+  Dairy: [
+    "Milk and Dairy Products",
+    "Cream and cream products",
+    "Cheese",
+    "Butter",
+    "Desserts",
+    "Dried milk products",
+    "Frozen Dairy products",
+    "Lactose -free milk & dairy products",
+  ],
+  "Drinks & Hot beverages": [
+    "Heath-promoting drinks",
+    "Energy drinks",
+    "Soft Drinks",
+    "Juices",
+    "Coffee & tea",
+    "Beer & mixed beer drinks",
+    "Wine and sparkling wine",
+    "Spirits",
+  ],
+  "Fine Food": [
+    "General Provisions and staple food",
+    "Nutrients",
+    "Canned Food",
+    "Ready-meals and soup products",
+    "Delicatessen sauces & seasonings",
+    "Dried fruit and vegetables",
+    "Oils and Fats",
+  ],
+  Organic: ["Organic food in general", "Natural", "Minimally processed"],
+  "Bread and Bakery": [
+    "Bread",
+    "Baked goods",
+    "Cakes and pastry",
+    "Small baked rolls",
+    "Long-life baked goods",
+    "Spreads",
+  ],
+  "Sweets & Snacks": ["Chocolate", "Confectionary", "Biscuits and Snacks"],
+  "Food Service": [
+    "Cooking",
+    "Technology",
+    "Equipment & services",
+    "Catering & hotel areas",
+  ],
+  "Associations, Organisations, Press": [
+    "Associations and Organizations",
+    "Trade Press",
+    "Services, IT",
+  ],
+  "Marine products": ["Fish"],
 };
 
 const ExhibitorRegistration = () => {
   const [steps, setSteps] = useState([
-    { id: 1, label: "Contact Information", completed: false },
-    { id: 2, label: "Corporate Address", completed: false },
-    { id: 3, label: "Exhibitor Information", completed: false },
+    { id: 1, label: "Referral Information", completed: false },
+    { id: 2, label: "Contact Information", completed: false },
+    { id: 3, label: "Corporate Address", completed: false },
+    { id: 4, label: "Exhibitor Information", completed: false },
   ]);
 
   const [currentStep, setCurrentStep] = useState(steps[0]);
@@ -160,6 +526,52 @@ const ExhibitorRegistration = () => {
 
   const topRef = useRef<HTMLDivElement>(null);
 
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
+  const [selectedState, setSelectedState] = useState<IState | null>(null);
+  const [selectedCity, setSelectedCity] = useState<ICity | null>(null);
+  const [states, setStates] = useState<IState[]>([]);
+  const [cities, setCities] = useState<ICity[]>([]);
+  const [phoneCountry, setPhoneCountry] = useState("in"); // Default to India
+
+  // Add these state variables after other useState declarations
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(
+    []
+  );
+
+  useEffect(() => {
+    if (selectedCountry) {
+      const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
+      setStates(countryStates);
+
+      setPhoneCountry(selectedCountry.isoCode.toLowerCase());
+      if (
+        !selectedState ||
+        !countryStates.some((state) => state.isoCode === selectedState.isoCode)
+      ) {
+        setSelectedState(null);
+        setSelectedCity(null);
+        setCities([]);
+      }
+    }
+  }, [selectedCountry]);
+
+  useEffect(() => {
+    if (selectedCountry && selectedState) {
+      const stateCities = City.getCitiesOfState(
+        selectedCountry.isoCode,
+        selectedState.isoCode
+      );
+      setCities(stateCities);
+      if (
+        !selectedCity ||
+        !stateCities.some((city) => city.name === selectedCity.name)
+      ) {
+        setSelectedCity(null);
+      }
+    }
+  }, [selectedCountry, selectedState]);
+
   const {
     register,
     handleSubmit,
@@ -169,17 +581,16 @@ const ExhibitorRegistration = () => {
     control, // For controlled components like MUI select or custom radio/checkbox groups if needed
     getValues,
     setValue,
+    setError,
   } = useForm({
     resolver: zodResolver(schema),
     mode: "onChange", // Validate on change for better UX
     defaultValues: {
+      recommendedBy: "",
+      profileBrief: "",
       profilePhoto: undefined,
       companyName: "",
-      chiefExecutiveTitle: "",
-      chiefExecutiveFirstName: "",
-      chiefExecutiveLastName: "",
-      chiefExecutiveDesignation: "",
-      contactPersonTitle: "",
+      contactPersonTitle: undefined,
       contactPersonFirstName: "",
       contactPersonLastName: "",
       contactPersonDesignation: "",
@@ -192,33 +603,48 @@ const ExhibitorRegistration = () => {
       city: "",
       postalCode: "",
       telephone: "",
-      fax: "",
       mobile: "",
       emailAddress: "",
       alternateEmailAddress: "",
       website: "",
       panNoInput: "",
       gstNumber: "",
-      isExporter: "",
+
+      hasNoGst: false,
+      gstFile: undefined,
+      isExporter: undefined,
       iecCode: "",
-      reason: "",
       correspondenceAddress: "",
+      billingAddressLine1: "",
+      billingAddressLine2: "",
+      billingCity: "",
+      billingCountry: "",
+      billingStateProvinceRegion: "",
+      billingPostalCode: "",
 
       // Step 3: Exhibitor Information
       hallNo: "",
       stallNo: "",
       areaRequired: "",
       areaOfInterest: "",
-      listOfProducts: "",
+      productCategory: [],
+      productSubCategory: [],
+      scheme: undefined,
+      termsAccepted: false,
     },
   });
 
   // const watchedHasGstNumber = watch("hasGstNumber");
   const watchedIsExporter = watch("isExporter");
-  // const watchedBookingViaAssociation = watch("bookingViaAssociation");
-  // const watchedRegisteredWithMsme = watch("registeredWithMsme");
-  // const watchedBoothTypePreference = watch("boothTypePreference");
-  // const watchedTotalAreaRequired = watch("totalAreaRequired");
+  const watchedRecommendedBy = watch("recommendedBy");
+  const watchedScheme = watch("scheme");
+
+  // Update formData when values change
+  useEffect(() => {
+    formData.isExporter = watchedIsExporter;
+    formData.recommendedBy = watchedRecommendedBy;
+    formData.scheme = watchedScheme;
+  }, [watchedIsExporter, watchedRecommendedBy, watchedScheme]);
 
   // useEffect(() => {
   //   const area = parseFloat(watchedTotalAreaRequired);
@@ -235,6 +661,7 @@ const ExhibitorRegistration = () => {
   const handleGoToNextStep = async () => {
     console.log(currentStep.id);
     const fieldsToValidate = stepFields[currentStep.id];
+
     const isValid = await trigger(fieldsToValidate);
     if (isValid) {
       setSteps((prevSteps) =>
@@ -301,8 +728,69 @@ const ExhibitorRegistration = () => {
     // Do not allow jumping to future, uncompleted steps beyond the next one
   };
 
+  const uploadFile = async (file: File) => {
+    const formData = new FormData();
+    const URL = `https://sit.spicetrade.io/api/auth/api/file/upload`;
+    formData.append("file", file);
+
+    try {
+      const response = await axios.post(URL, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      console.log("File upload response:", response);
+
+      return response.data;
+    } catch (err: any) {
+      console.error("File upload error:", err);
+      return err;
+    }
+  };
+
   const onSubmitApi = async (formData: z.infer<typeof schema>) => {
+    const isValid = await trigger();
+    if (!isValid) {
+      setApiMessage({
+        type: "error",
+        text: "Please fill all fields correctly",
+      });
+      return;
+    }
+
+    if (formData.profilePhoto instanceof File) {
+      try {
+        const uploadResponse = await uploadFile(formData.profilePhoto);
+        console.log("aaaaaaaaa : ", uploadResponse);
+        formData.profilePhoto = uploadResponse.data.storeUrl;
+      } catch (error) {
+        console.error("Logo upload failed:", error);
+        setApiMessage({
+          type: "error",
+          text: `Profile Upload failed:. ${error.message}`,
+        });
+        return;
+      }
+    }
+
+    if (formData.gstFile instanceof File) {
+      try {
+        const uploadResponse = await uploadFile(formData.gstFile);
+        console.log("aaaaaaaaa : ", uploadResponse);
+        formData.gstFile = uploadResponse.data.storeUrl;
+      } catch (error) {
+        console.error("Gst file upload failed:", error);
+        setApiMessage({
+          type: "error",
+          text: `Gst file Upload failed:. ${error.message}`,
+        });
+        return;
+      }
+    }
+
     console.log(formData);
+
     console.log("Jhugyf");
     setApiMessage({ type: "info", text: "Submitting..." });
     setAmount(totalCost);
@@ -312,46 +800,52 @@ const ExhibitorRegistration = () => {
       phone: formData.mobile || "",
       eventId: 146,
       userCohort: "EXHIBITOR",
-      image: "imgUrlPlaceholder",
+      image: formData.profilePhoto,
       email: formData.emailAddress || "",
       companyOrganizationName: formData.companyName || "",
       companyEmail: formData.emailAddress || "",
       companyContact: formData.mobile || "",
       companyAddress: `${formData.addressLine1 || ""}, ${
         formData.city || ""
-      }, ${formData.stateProvinceRegion || ""}, ${formData.postalCode || ""}`,
+      }, ${formData.stateProvinceRegion || ""}, ${formData.country || ""}, ${
+        formData.postalCode || ""
+      }`,
       companyPanNo: formData.panNoInput || "",
       companyGstin: formData.gstNumber || "",
-      directorName:
-        formData.chiefExecutiveFirstName +
-          " " +
-          formData.chiefExecutiveLastName || "",
+      directorName: "",
       data: {
-        boothDisplayName: formData.companyName || "",
-        addressLine1: formData.addressLine1 || "",
-        addressLine2: formData.addressLine2 || "",
-        city: formData.city || "",
-        country: formData.country || "",
-        stateProvinceRegion: formData.stateProvinceRegion || "",
-        postalCode: formData.postalCode || "",
-        hasGstNumber: formData.gstNumber ? "yes" : "no",
-        alternateMobileNumber: formData.alternateMobileNumber || "",
-        alternateEmailAddress: formData.alternateEmailAddress || "",
-        website: formData.website || "",
+        profileBrief: formData.profileBrief || "",
+        contactPersonFullName:
+          formData.contactPersonTitle +
+            " " +
+            formData.contactPersonFirstName +
+            " " +
+            formData.contactPersonLastName || "",
         contactPersonDesignation: formData.contactPersonDesignation || "",
-        bookingViaAssociation: "no",
-        associationNumber: "",
-        registeredWithMsme: "no",
-        msmeNumber: "",
-        participatedEarlier: "no",
-        productCategory: "",
-        departmentCategory: "",
-        interestedInSponsorship: "no",
-        mainObjectives: "",
-        otherObjective: "",
-        boothTypePreference: "",
-        totalAreaRequired: formData.areaRequired || "",
-        calculatedTotalCost: totalCost,
+        alternateEmailAddress: formData.alternateEmailAddress || "",
+        telephone: formData.telephone || "",
+        website: formData.website || "",
+        hasGSTNumber: formData.gstNumber ? "yes" : "no",
+        hasPanNumber: formData.panNoInput ? "yes" : "no",
+        gstFile: formData.gstFile || "",
+        isExporter: formData.isExporter || "",
+        iecCode: formData.isExporter === "yes" ? formData.iecCode : "",
+        correspondenceAddress: formData.correspondenceAddress || "",
+        hallNo: formData.hallNo || "",
+        stallNo: formData.stallNo || "",
+        scheme: formData.scheme || "",
+        termsAccepted: formData.termsAccepted || false,
+        productCategory: formData.productCategory || [],
+        productSubCategory: formData.productSubCategory || [],
+        recommendedBy: formData.recommendedBy || "",
+        areaRequired: Number(formData.areaRequired) || "",
+
+        billingAddressLine1: formData.billingAddressLine1 || "",
+        billingAddressLine2: formData.billingAddressLine2 || "",
+        billingCity: formData.billingCity || "",
+        billingCountry: formData.billingCountry || "",
+        billingPostalCode: formData.billingPostalCode || "",
+        billingStateProvinceRegion: formData.billingStateProvinceRegion || "",
       },
     };
 
@@ -385,8 +879,8 @@ const ExhibitorRegistration = () => {
             text: "Registration Successful!",
           });
           // const timer = setTimeout(() => {
-          //   navigate(`/payment?email=${formData.emailAddress}`);
           // }, 5000);
+          navigate(`/thankyou`);
 
           // return () => clearTimeout(timer);
         } else {
@@ -465,6 +959,122 @@ const ExhibitorRegistration = () => {
     "Others (Please Specify)",
   ];
 
+  const [profilePreview, setProfilePreview] = useState<string | undefined>();
+  const [gstFilePreview, setGstFilePreview] = useState<string | undefined>();
+
+  const handleFilePreview = (
+    file: File,
+    setPreview: (preview: string) => void
+  ) => {
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === "application/pdf") {
+      setPreview("/pdf-icon.png"); // You can add a PDF icon in your public folder
+    }
+  };
+
+  const [billingAddressSame, setBillingAddressSame] = useState(false);
+  const [selectedBillingCountry, setSelectedBillingCountry] =
+    useState<ICountry | null>(null);
+  const [selectedBillingState, setSelectedBillingState] =
+    useState<IState | null>(null);
+  const [selectedBillingCity, setSelectedBillingCity] = useState<ICity | null>(
+    null
+  );
+  const [billingStates, setBillingStates] = useState<IState[]>([]);
+  const [billingCities, setBillingCities] = useState<ICity[]>([]);
+
+  useEffect(() => {
+    const hasNoGst = watch("hasNoGst");
+    if (hasNoGst) {
+      setValue("gstNumber", "");
+      setValue("gstFile", undefined);
+      setGstFilePreview(undefined);
+    }
+  }, [watch("hasNoGst"), setValue]);
+
+  useEffect(() => {
+    if (billingAddressSame) {
+      const businessAddress = {
+        addressLine1: getValues("addressLine1"),
+        addressLine2: getValues("addressLine2"),
+        city: getValues("city"),
+        country: getValues("country"),
+        stateProvinceRegion: getValues("stateProvinceRegion"),
+        postalCode: getValues("postalCode"),
+      };
+
+      setValue("billingAddressLine1", businessAddress.addressLine1);
+      setValue("billingAddressLine2", businessAddress.addressLine2);
+      setValue("billingCity", businessAddress.city);
+      setValue("billingCountry", businessAddress.country);
+      setValue(
+        "billingStateProvinceRegion",
+        businessAddress.stateProvinceRegion
+      );
+      setValue("billingPostalCode", businessAddress.postalCode);
+
+      setSelectedBillingCountry(selectedCountry);
+      setSelectedBillingState(selectedState);
+      setSelectedBillingCity(selectedCity);
+      setBillingStates(states);
+      setBillingCities(cities);
+    }
+  }, [
+    billingAddressSame,
+    getValues,
+    setValue,
+    selectedCountry,
+    selectedState,
+    selectedCity,
+    states,
+    cities,
+    watch("postalCode"),
+  ]);
+
+  useEffect(() => {
+    if (!billingAddressSame) {
+      if (selectedBillingCountry) {
+        const countryStates = State.getStatesOfCountry(
+          selectedBillingCountry.isoCode
+        );
+        setBillingStates(countryStates);
+        if (
+          !selectedBillingState ||
+          !countryStates.some(
+            (state) => state.isoCode === selectedBillingState.isoCode
+          )
+        ) {
+          setSelectedBillingState(null);
+          setSelectedBillingCity(null);
+          setBillingCities([]);
+        }
+      }
+    }
+  }, [selectedBillingCountry, billingAddressSame]);
+
+  useEffect(() => {
+    if (!billingAddressSame) {
+      if (selectedBillingCountry && selectedBillingState) {
+        const stateCities = City.getCitiesOfState(
+          selectedBillingCountry.isoCode,
+          selectedBillingState.isoCode
+        );
+        setBillingCities(stateCities);
+        if (
+          !selectedBillingCity ||
+          !stateCities.some((city) => city.name === selectedBillingCity.name)
+        ) {
+          setSelectedBillingCity(null);
+        }
+      }
+    }
+  }, [selectedBillingCountry, selectedBillingState, billingAddressSame]);
+
   return (
     <>
       <form onSubmit={handleSubmit(onSubmitApi)} className="w-full">
@@ -476,7 +1086,7 @@ const ExhibitorRegistration = () => {
           {/* Centered form */}
           <div className="flex flex-col justify-start gap-3 lg:gap-8 items-center lg:items-start lg:w-2/5 w-full bg-[#B5207E] rounded-t-2xl lg:rounded-2xl lg:pl-5 px-4 py-6 lg:py-12 text-white">
             <h1 className="text-white text-2xl lg:text-3xl font-semibold px-4">
-              Register Now
+              Exhibitor Registration
             </h1>
             <Timeline
               sx={{
@@ -641,8 +1251,73 @@ const ExhibitorRegistration = () => {
             </Timeline>
           </div>
           <div className="flex flex-col w-full p-6 lg:p-8">
-            {/* Step 1: Exhibitor Information */}
+            {/* Step 1: Referal Information */}
+
             {currentStep.id === 1 && (
+              <>
+                <div className="flex flex-col items-start h-full w-full">
+                  <h2 className="text-2xl font-semibold mb-4">
+                    Exhibitor Registration Form
+                  </h2>
+                  <hr className="w-full border-t-1 border-[#B1B1B1] mb-4" />
+                  <div className="bg-[#FDF7FA] py-2 rounded-lg w-full mb-6">
+                    <h3 className="font-semibold mb-3 text-lg">Instructions</h3>
+                    <ul className="list-disc pl-4 space-y-2 text-gray-700">
+                      <li>
+                        Before filling up this form kindly get in touch with
+                        FICCI Officials
+                      </li>
+                      <li>
+                        Registration must be completed in one go with stable
+                        internet
+                      </li>
+                      <li>
+                        Please fill correct information as per field given
+                      </li>
+                      <li>Validate mobile number & email ID</li>
+                    </ul>
+                  </div>
+
+                  <div className="w-full md:w-1/2 mb-6">
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Select who recommended you*
+                    </label>
+                    <select
+                      {...register("recommendedBy")}
+                      className={`w-full h-13 border bg-white ${
+                        errors.recommendedBy
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                    >
+                      <option value=""></option>
+                      <option value="Ministries">Ministries</option>
+                      <option value="States">States</option>
+                      <option value="Commodity Boards">Commodity Boards</option>
+                      <option value="Associations">Associations</option>
+                      <option value="MoFPI Beneficiary">
+                        MoFPI Beneficiary
+                      </option>
+                      <option value="International Pavilion">
+                        International Pavilion
+                      </option>
+                      <option value="Self">Self</option>
+                      <option value="Sea food export association">
+                        Sea food export association
+                      </option>
+                    </select>
+                    {errors.recommendedBy && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.recommendedBy.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 2: Exhibitor Information */}
+            {currentStep.id === 2 && (
               <>
                 <div className="flex flex-col items-start h-full w-full">
                   <h2 className="text-2xl font-semibold mb-4">
@@ -652,29 +1327,22 @@ const ExhibitorRegistration = () => {
                   {/* Row 1 */}
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
                     <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
-                        Profile Photo
-                      </label>
-                      <input
-                        type="file"
+                      <FileUploadBox
+                        label="Company Logo Upload"
                         accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setValue("profilePhoto", file);
-                          }
+                        error={!!errors.profilePhoto}
+                        helperText="Supported formats: JPG, PNG, WEBP (Max 5MB)"
+                        preview={profilePreview}
+                        errorMessage={errors.profilePhoto?.message}
+                        onDelete={() => {
+                          setValue("profilePhoto", undefined);
+                          setProfilePreview(undefined);
                         }}
-                        className={`w-full h-13 border bg-white ${
-                          errors.profilePhoto
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                        onChange={(file) => {
+                          setValue("profilePhoto", file);
+                          handleFilePreview(file, setProfilePreview);
+                        }}
                       />
-                      {errors.profilePhoto && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.profilePhoto.message}
-                        </p>
-                      )}
                     </div>
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
@@ -697,115 +1365,34 @@ const ExhibitorRegistration = () => {
                       )}
                     </div>
                   </div>
-                  {/* Row 2 */}
-                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
-                        Chief Executive Title*
-                      </label>
-                      <input
-                        type="text"
-                        {...register("chiefExecutiveTitle")}
-                        placeholder="Enter Chief Executive Title"
-                        className={`w-full h-13 border bg-white ${
-                          errors.chiefExecutiveTitle
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
-                      {errors.chiefExecutiveTitle && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.chiefExecutiveTitle.message}
-                        </p>
-                      )}
-                    </div>
-                    <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
-                        Chief Executive First Name*
-                      </label>
-                      <input
-                        type="text"
-                        {...register("chiefExecutiveFirstName")}
-                        placeholder="Enter Chief Executive First Name"
-                        className={`w-full h-13 border bg-white ${
-                          errors.chiefExecutiveFirstName
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
-                      {errors.chiefExecutiveFirstName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.chiefExecutiveFirstName.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {/* Row 3 */}
-                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
-                        Chief Executive Last Name*
-                      </label>
-                      <input
-                        type="text"
-                        {...register("chiefExecutiveLastName")}
-                        placeholder="Enter Chief Executive Last Name*"
-                        className={`w-full h-13 border bg-white ${
-                          errors.chiefExecutiveLastName
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
-                      {errors.chiefExecutiveLastName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.chiefExecutiveLastName.message}
-                        </p>
-                      )}
-                    </div>
-                    <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
-                        Chief Executive Designation*
-                      </label>
-                      <input
-                        type="text"
-                        {...register("chiefExecutiveDesignation")}
-                        placeholder="Enter Chief Executive Designation*"
-                        className={`w-full h-13 border bg-white ${
-                          errors.chiefExecutiveDesignation
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
-                      {errors.chiefExecutiveDesignation && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.chiefExecutiveDesignation.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
                   {/* Row 4 */}
-                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:w-1/2">
+                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-4">
+                    <div className="mb-4 w-full md:w-1/3">
                       <label className="block text-gray-700 font-medium mb-2">
                         Contact Person Title*
                       </label>
-                      <input
-                        type="text"
+                      <select
                         {...register("contactPersonTitle")}
-                        placeholder="Enter Contact Person Title*"
                         className={`w-full h-13 border bg-white ${
                           errors.contactPersonTitle
                             ? "border-red-500"
                             : "border-gray-300"
                         } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
+                      >
+                        <option value=""></option>
+                        <option value="Mr">Mr</option>
+                        <option value="Mrs">Mrs</option>
+                        <option value="Ms">Ms</option>
+                        <option value="Dr">Dr</option>
+                        <option value="Prof">Prof</option>
+                      </select>
                       {errors.contactPersonTitle && (
                         <p className="text-red-500 text-sm mt-1">
                           {errors.contactPersonTitle.message}
                         </p>
                       )}
                     </div>
-                    <div className="mb-4 w-full md:w-1/2">
+                    <div className="mb-4 w-full md:w-1/3">
                       <label className="block text-gray-700 font-medium mb-2">
                         Contact Person First Name*
                       </label>
@@ -823,10 +1410,7 @@ const ExhibitorRegistration = () => {
                         </p>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:w-1/2">
+                    <div className="mb-4 w-full md:w-1/3">
                       <label className="block text-gray-700 font-medium mb-2">
                         Contact Person Last Name*
                       </label>
@@ -846,6 +1430,9 @@ const ExhibitorRegistration = () => {
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
                         Contact Person Designation*
@@ -866,13 +1453,49 @@ const ExhibitorRegistration = () => {
                         </p>
                       )}
                     </div>
+                    <div className="mb-4 w-full md:w-1/2"></div>
+                  </div>
+
+                  <div className="w-full mb-6">
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Profile Brief (Max 200 words)*
+                    </label>
+                    <textarea
+                      {...register("profileBrief")}
+                      placeholder="Enter a brief profile of your company/organization"
+                      className={`w-full border bg-white ${
+                        errors.profileBrief
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E] min-h-[120px]`}
+                    />
+                    {errors.profileBrief && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.profileBrief.message}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-500 mt-1">
+                      {(() => {
+                        const briefText = watch("profileBrief") || "";
+                        const wordCount = briefText
+                          .trim()
+                          .split(/\s+/)
+                          .filter((word) => word.length > 0).length;
+                        const isOverLimit = wordCount > 200;
+                        return (
+                          <span className={isOverLimit ? "text-red-500" : ""}>
+                            Words: {wordCount}/200
+                          </span>
+                        );
+                      })()}
+                    </p>
                   </div>
                 </div>
               </>
             )}
 
-            {/* Step 2: Contact Details */}
-            {currentStep.id === 2 && (
+            {/* Step 3: Contact Details */}
+            {currentStep.id === 3 && (
               <>
                 <div className="flex flex-col items-start h-full w-full">
                   <h2 className="text-2xl font-semibold mb-4 mt-4">
@@ -915,79 +1538,202 @@ const ExhibitorRegistration = () => {
                   </div>
                   {/* Row 3 */}
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:full">
+                    <div className="mb-8 w-full md:w-2/4">
                       <label className="block text-gray-700 font-medium mb-2">
                         Country*
                       </label>
-                      <CountrySelect
-                        placeholder="Enter Country"
-                        className={`w-full h-13 border bg-white ${
-                          errors.country ? "border-red-500" : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                        onChange={(selectedCountry) => {
-                          setValue("country", selectedCountry.name, {
-                            shouldValidate: true,
-                          });
-                          setCountryId(selectedCountry.id);
-                        }}
+                      <Controller
+                        name="country"
+                        control={control}
+                        render={({ field }) => (
+                          <Autocomplete
+                            options={Country.getAllCountries()}
+                            autoHighlight
+                            getOptionLabel={(option) => option.name}
+                            value={selectedCountry}
+                            onChange={(_, newValue) => {
+                              field.onChange(newValue?.name || "");
+                              setSelectedCountry(newValue);
+                            }}
+                            renderOption={(props, option) => (
+                              <Box component="li" {...props}>
+                                {option.name} ({option.isoCode})
+                              </Box>
+                            )}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="Select Country"
+                                error={!!errors.country}
+                                helperText={errors.country?.message}
+                                className={`w-full h-14 border bg-white ${
+                                  errors.country
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                              />
+                            )}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                "& fieldset": {
+                                  borderColor: errors.country
+                                    ? "#EF4444"
+                                    : "#D1D5DB",
+                                },
+                                "&:hover fieldset": {
+                                  borderColor: "#B5207E",
+                                },
+                                "&.Mui-focused fieldset": {
+                                  borderColor: "#B5207E",
+                                  borderWidth: "2px",
+                                },
+                              },
+                              "& .MuiAutocomplete-input": {
+                                // padding: "10px 4px !important",
+                              },
+                              "& .MuiFormHelperText-root.Mui-error": {
+                                color: "#B5207E",
+                              },
+                            }}
+                          />
+                        )}
                       />
-                      {errors.country && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.country.message}
-                        </p>
-                      )}
                     </div>
-                    <div className="mb-4 w-full md:w-full">
+                    <div className="mb-8 w-full md:w-2/4">
                       <label className="block text-gray-700 font-medium mb-2">
                         State / Province / Region*
                       </label>
-                      <StateSelect
-                        countryid={countryId || 0}
-                        placeholder="Enter State or Region"
-                        className={`w-full h-13 border bg-white ${
-                          errors.stateProvinceRegion
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                        onChange={(selectedState) => {
-                          setValue("stateProvinceRegion", selectedState.name, {
-                            shouldValidate: true,
-                          });
-                          setStateId(selectedState.id);
-                        }}
+                      <Controller
+                        name="stateProvinceRegion"
+                        control={control}
+                        render={({ field }) => (
+                          <Autocomplete
+                            options={states}
+                            autoHighlight
+                            getOptionLabel={(option) => option.name}
+                            value={selectedState}
+                            onChange={(_, newValue) => {
+                              field.onChange(newValue?.name || "");
+                              setSelectedState(newValue);
+                            }}
+                            disabled={!selectedCountry}
+                            renderOption={(props, option) => (
+                              <Box component="li" {...props}>
+                                {option.name}
+                              </Box>
+                            )}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder={
+                                  selectedCountry
+                                    ? "Select State"
+                                    : "Select Country First"
+                                }
+                                error={!!errors.stateProvinceRegion}
+                                helperText={errors.stateProvinceRegion?.message}
+                                className={`w-full h-14 border bg-white ${
+                                  errors.stateProvinceRegion
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                                sx={{
+                                  "& .MuiOutlinedInput-root": {
+                                    "& fieldset": {
+                                      borderColor: errors.stateProvinceRegion
+                                        ? "#EF4444"
+                                        : "#D1D5DB",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#B5207E",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#B5207E",
+                                      borderWidth: "2px",
+                                    },
+                                  },
+                                  "& .MuiAutocomplete-input": {
+                                    // padding: "10px 4px !important",
+                                  },
+                                  "& .MuiFormHelperText-root.Mui-error": {
+                                    color: "#B5207E",
+                                  },
+                                }}
+                              />
+                            )}
+                          />
+                        )}
                       />
-                      {errors.stateProvinceRegion && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.stateProvinceRegion.message}
-                        </p>
-                      )}
                     </div>
                   </div>
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:w-full">
+                    <div className="mb-8 w-full md:w-2/4">
                       <label className="block text-gray-700 font-medium mb-2">
                         City / Town*
                       </label>
-                      <CitySelect
-                        countryid={countryId || 0}
-                        stateid={stateId || 0}
-                        placeholder="Enter City or Town"
-                        className={`w-full h-13 border bg-white ${
-                          errors.city ? "border-red-500" : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                        onChange={(selectedCity) =>
-                          setValue("city", selectedCity.name, {
-                            shouldValidate: true,
-                          })
-                        }
+                      <Controller
+                        name="city"
+                        control={control}
+                        render={({ field }) => (
+                          <Autocomplete
+                            options={cities}
+                            autoHighlight
+                            getOptionLabel={(option) => option.name}
+                            value={selectedCity}
+                            onChange={(_, newValue) => {
+                              field.onChange(newValue?.name || "");
+                              setSelectedCity(newValue);
+                            }}
+                            disabled={!selectedState}
+                            renderOption={(props, option) => (
+                              <Box component="li" {...props}>
+                                {option.name}
+                              </Box>
+                            )}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder={
+                                  selectedState
+                                    ? "Select City"
+                                    : "Select State First"
+                                }
+                                error={!!errors.city}
+                                helperText={errors.city?.message}
+                                className={`w-full h-14 border bg-white ${
+                                  errors.city
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                                sx={{
+                                  "& .MuiOutlinedInput-root": {
+                                    "& fieldset": {
+                                      borderColor: errors.city
+                                        ? "#EF4444"
+                                        : "#D1D5DB",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#B5207E",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#B5207E",
+                                      borderWidth: "2px",
+                                    },
+                                  },
+                                  "& .MuiAutocomplete-input": {
+                                    // padding: "10px 4px !important",
+                                  },
+                                  "& .MuiFormHelperText-root.Mui-error": {
+                                    color: "#B5207E",
+                                  },
+                                }}
+                              />
+                            )}
+                          />
+                        )}
                       />
-                      {errors.city && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.city.message}
-                        </p>
-                      )}
                     </div>
-                    <div className="mb-4 w-full md:w-1/3">
+                    <div className="mb-4 w-full md:w-2/4">
                       <label className="block text-gray-700 font-medium mb-2">
                         Postal Code / ZIP Code*
                       </label>
@@ -1012,56 +1758,62 @@ const ExhibitorRegistration = () => {
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
-                        Telephone
-                      </label>
-                      <input
-                        type="text"
-                        {...register("telephone")}
-                        placeholder="Enter Telephone"
-                        className={`w-full h-13 border bg-white ${
-                          errors.telephone
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
-                      {errors.telephone && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.telephone.message}
-                        </p>
-                      )}
-                    </div>
-                    <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
-                        Fax
-                      </label>
-                      <input
-                        type="text"
-                        {...register("fax")}
-                        placeholder="Enter Fax"
-                        className={`w-full h-13 border bg-white ${
-                          errors.fax ? "border-red-500" : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
-                      {errors.fax && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.fax.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
-                    <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
                         Mobile*
                       </label>
-                      <input
-                        type="text"
-                        {...register("mobile")}
-                        placeholder="Enter Mobile"
-                        className={`w-full h-13 border bg-white ${
-                          errors.mobile ? "border-red-500" : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                      <Controller
+                        name="mobile"
+                        control={control}
+                        render={({
+                          field: { onChange, value },
+                          fieldState: { error },
+                        }) => (
+                          <PhoneInput
+                            country={phoneCountry}
+                            value={value}
+                            onChange={(phone) => {
+                              const formattedPhone = phone.startsWith("+")
+                                ? phone
+                                : `+${phone}`;
+                              onChange(formattedPhone);
+                            }}
+                            placeholder="Enter Mobile Number"
+                            specialLabel=""
+                            inputStyle={{
+                              width: "100%",
+                              height: "53px",
+                              borderRadius: "0.125rem",
+                              borderColor: error ? "#EF4444" : "#D1D5DB",
+                              backgroundColor: "white",
+                              fontSize: "1rem",
+                              color: "#374151",
+                            }}
+                            buttonStyle={{
+                              backgroundColor: "transparent",
+                              borderColor: error ? "#EF4444" : "#D1D5DB",
+                              borderRadius: "0.125rem 0 0 0.125rem",
+                            }}
+                            dropdownStyle={{
+                              backgroundColor: "white",
+                              color: "#374151",
+                            }}
+                            containerStyle={{
+                              width: "100%",
+                            }}
+                            inputProps={{
+                              onFocus: (e) => {
+                                e.target.style.borderColor = "#B5207E";
+                                e.target.style.boxShadow =
+                                  "0 0 0 2px rgba(181, 32, 126, 1)";
+                              },
+                              onBlur: (e) => {
+                                e.target.style.borderColor = error
+                                  ? "#EF4444"
+                                  : "#D1D5DB";
+                                e.target.style.boxShadow = "none";
+                              },
+                            }}
+                          />
+                        )}
                       />
                       {errors.mobile && (
                         <p className="text-red-500 text-sm mt-1">
@@ -1116,6 +1868,29 @@ const ExhibitorRegistration = () => {
 
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
+                        Telephone
+                      </label>
+                      <input
+                        type="text"
+                        {...register("telephone")}
+                        placeholder="Enter Telephone"
+                        className={`w-full h-13 border bg-white ${
+                          errors.telephone
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                      />
+                      {errors.telephone && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.telephone.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
+                    <div className="mb-4 w-full md:w-1/2">
+                      <label className="block text-gray-700 font-medium mb-2">
                         Website
                       </label>
                       <input
@@ -1132,6 +1907,7 @@ const ExhibitorRegistration = () => {
                         </p>
                       )}
                     </div>
+                    <div className="mb-4 w-full md:w-1/2"></div>
                   </div>
 
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
@@ -1163,17 +1939,54 @@ const ExhibitorRegistration = () => {
                         type="text"
                         {...register("gstNumber")}
                         placeholder="Enter Your GST Number"
+                        disabled={watch("hasNoGst")}
                         className={`w-full h-13 border bg-white ${
                           errors.gstNumber
                             ? "border-red-500"
                             : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E] ${
+                          watch("hasNoGst") ? "bg-gray-100" : ""
+                        }`}
                       />
+                      <div className="mt-2">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            {...register("hasNoGst")}
+                            className="form-checkbox h-5 w-5 text-[#B5207E] rounded border-gray-300 focus:ring-[#B5207E]"
+                          />
+                          <span className="ml-2 text-gray-700">
+                            I do not have a GST certificate
+                          </span>
+                        </label>
+                      </div>
                       {errors.gstNumber && (
                         <p className="text-red-500 text-sm mt-1">
                           {errors.gstNumber.message}
                         </p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
+                    <div className="mb-4 w-full md:w-1/2">
+                      <FileUploadBox
+                        label="Upload GST File"
+                        accept=".pdf,image/*"
+                        error={!!errors.gstFile}
+                        helperText="Supported formats: PDF, JPG, PNG (Max 5MB)"
+                        preview={gstFilePreview}
+                        errorMessage={errors.gstFile?.message}
+                        onDelete={() => {
+                          setValue("gstFile", undefined);
+                          setGstFilePreview(undefined);
+                        }}
+                        onChange={(file) => {
+                          setValue("gstFile", file);
+                          handleFilePreview(file, setGstFilePreview);
+                        }}
+                        disabled={watch("hasNoGst")}
+                      />
                     </div>
                   </div>
 
@@ -1203,7 +2016,7 @@ const ExhibitorRegistration = () => {
                         </p>
                       )}
                     </div>
-                    {watchedIsExporter === "yes" && (
+                    {watch("isExporter") === "yes" && (
                       <div className="mb-4 w-full md:w-1/2">
                         <label className="block text-gray-700 font-medium mb-2">
                           If Yes, Please Specify your IEC Code*
@@ -1225,29 +2038,9 @@ const ExhibitorRegistration = () => {
                         )}
                       </div>
                     )}
-                    {watchedIsExporter === "no" && (
-                      <div className="mb-4 w-full md:w-1/2">
-                        <label className="block text-gray-700 font-medium mb-2">
-                          Reason for No IEC Code*
-                        </label>
-                        <input
-                          type="text"
-                          {...register("reason")}
-                          placeholder="Enter Reason for No IEC Code*"
-                          className={`w-full h-13 border bg-white ${
-                            errors.reason ? "border-red-500" : "border-gray-300"
-                          } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                        />
-                        {errors.reason && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {errors.reason.message}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
 
-                  <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
+                  {/*<div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
                         Correspondence Address
@@ -1268,13 +2061,284 @@ const ExhibitorRegistration = () => {
                         </p>
                       )}
                     </div>
-                  </div>
+                    <div className="mb-4 w-full md:w-1/2"></div>
+                  </div>*/}
+
+                  {watchedRecommendedBy !== "Sea food export association" && (
+                    <>
+                      <div className="mb-4 w-full">
+                        <label className="flex items-center text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={billingAddressSame}
+                            onChange={(e) =>
+                              setBillingAddressSame(e.target.checked)
+                            }
+                            className="mr-2 h-5 w-5 accent-[#B5207E]"
+                          />
+                          <span className="font-medium">
+                            Billing address same as above
+                          </span>
+                        </label>
+                      </div>
+                      <h2 className="text-2xl font-semibold mb-4 mt-4">
+                        Billing Address
+                      </h2>
+                      <hr className="w-full border-t-1 border-[#B1B1B1] mb-4" />
+                      <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
+                        <div className="mb-4 w-full md:w-1/2">
+                          <label className="block text-gray-700 font-medium mb-2">
+                            Address Line 1*
+                          </label>
+                          <input
+                            type="text"
+                            {...register("billingAddressLine1")}
+                            placeholder="Enter Street Address"
+                            className={`w-full h-13 border bg-white ${
+                              errors.billingAddressLine1
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                          />
+                          {errors.billingAddressLine1 && (
+                            <p className="text-red-500 text-sm mt-1">
+                              {errors.billingAddressLine1.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="mb-4 w-full md:w-1/2">
+                          <label className="block text-gray-700 font-medium mb-2">
+                            Address Line 2 (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            {...register("billingAddressLine2")}
+                            placeholder="Enter Floor / Suite / Unit"
+                            className="w-full h-13 border bg-white border-gray-300 rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
+                        <div className="mb-6 w-full md:w-2/4">
+                          <label className="block text-gray-700 font-medium mb-2">
+                            Country*
+                          </label>
+                          <Controller
+                            name="billingCountry"
+                            control={control}
+                            render={({ field }) => (
+                              <Autocomplete
+                                options={Country.getAllCountries()}
+                                autoHighlight
+                                getOptionLabel={(option) => option.name}
+                                value={selectedBillingCountry}
+                                onChange={(_, newValue) => {
+                                  field.onChange(newValue?.name || "");
+                                  setSelectedBillingCountry(newValue);
+                                }}
+                                renderOption={(props, option) => (
+                                  <Box component="li" {...props}>
+                                    {option.name} ({option.isoCode})
+                                  </Box>
+                                )}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    placeholder="Select Country"
+                                    error={!!errors.billingCountry}
+                                    helperText={errors.billingCountry?.message}
+                                    className={`w-full h-14 border bg-white ${
+                                      errors.billingCountry
+                                        ? "border-red-500"
+                                        : "border-gray-300"
+                                    } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                                  />
+                                )}
+                                sx={{
+                                  "& .MuiOutlinedInput-root": {
+                                    "& fieldset": {
+                                      borderColor: errors.billingCountry
+                                        ? "#EF4444"
+                                        : "#D1D5DB",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#B5207E",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#B5207E",
+                                      borderWidth: "2px",
+                                    },
+                                  },
+                                  "& .MuiAutocomplete-input": {
+                                    // padding: "10px 4px !important",
+                                  },
+                                }}
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="mb-6 w-full md:w-2/4">
+                          <label className="block text-gray-700 font-medium mb-2">
+                            State / Province / Region*
+                          </label>
+                          <Controller
+                            name="billingStateProvinceRegion"
+                            control={control}
+                            render={({ field }) => (
+                              <Autocomplete
+                                options={billingStates}
+                                autoHighlight
+                                getOptionLabel={(option) => option.name}
+                                value={selectedBillingState}
+                                onChange={(_, newValue) => {
+                                  field.onChange(newValue?.name || "");
+                                  setSelectedBillingState(newValue);
+                                }}
+                                disabled={!selectedBillingCountry}
+                                renderOption={(props, option) => (
+                                  <Box component="li" {...props}>
+                                    {option.name}
+                                  </Box>
+                                )}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    placeholder={
+                                      selectedBillingCountry
+                                        ? "Select State"
+                                        : "Select Country First"
+                                    }
+                                    error={!!errors.billingStateProvinceRegion}
+                                    helperText={
+                                      errors.billingStateProvinceRegion?.message
+                                    }
+                                    className={`w-full h-14 border bg-white ${
+                                      errors.billingStateProvinceRegion
+                                        ? "border-red-500"
+                                        : "border-gray-300"
+                                    } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                                  />
+                                )}
+                                sx={{
+                                  "& .MuiOutlinedInput-root": {
+                                    "& fieldset": {
+                                      borderColor:
+                                        errors.billingStateProvinceRegion
+                                          ? "#EF4444"
+                                          : "#D1D5DB",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#B5207E",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#B5207E",
+                                      borderWidth: "2px",
+                                    },
+                                  },
+                                  "& .MuiAutocomplete-input": {
+                                    // padding: "10px 4px !important",
+                                  },
+                                }}
+                              />
+                            )}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
+                        <div className="mb-8 w-full md:w-2/4">
+                          <label className="block text-gray-700 font-medium mb-2">
+                            City / Town*
+                          </label>
+                          <Controller
+                            name="billingCity"
+                            control={control}
+                            render={({ field }) => (
+                              <Autocomplete
+                                options={billingCities}
+                                autoHighlight
+                                getOptionLabel={(option) => option.name}
+                                value={selectedBillingCity}
+                                onChange={(_, newValue) => {
+                                  field.onChange(newValue?.name || "");
+                                  setSelectedBillingCity(newValue);
+                                }}
+                                disabled={!selectedBillingState}
+                                renderOption={(props, option) => (
+                                  <Box component="li" {...props}>
+                                    {option.name}
+                                  </Box>
+                                )}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    placeholder={
+                                      selectedBillingState
+                                        ? "Select City"
+                                        : "Select State First"
+                                    }
+                                    error={!!errors.billingCity}
+                                    helperText={errors.billingCity?.message}
+                                    className={`w-full h-14 border bg-white ${
+                                      errors.billingCity
+                                        ? "border-red-500"
+                                        : "border-gray-300"
+                                    } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                                  />
+                                )}
+                                sx={{
+                                  "& .MuiOutlinedInput-root": {
+                                    "& fieldset": {
+                                      borderColor: errors.billingCity
+                                        ? "#EF4444"
+                                        : "#D1D5DB",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#B5207E",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#B5207E",
+                                      borderWidth: "2px",
+                                    },
+                                  },
+                                  "& .MuiAutocomplete-input": {
+                                    // padding: "10px 4px !important",
+                                  },
+                                }}
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="mb-8 w-full md:w-2/4">
+                          <label className="block text-gray-700 font-medium mb-2">
+                            Postal Code / ZIP Code*
+                          </label>
+                          <input
+                            type="text"
+                            {...register("billingPostalCode")}
+                            placeholder="Enter Postal or ZIP Code"
+                            className={`w-full h-13 border bg-white ${
+                              errors.billingPostalCode
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                          />
+                          {errors.billingPostalCode && (
+                            <p className="text-red-500 text-sm mt-1">
+                              {errors.billingPostalCode.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </>
             )}
 
-            {/* Step 3: Activities */}
-            {currentStep.id === 3 && (
+            {/* Step 4: Activities */}
+            {currentStep.id === 4 && (
               <>
                 <div className="flex flex-col items-start h-full w-full">
                   <h2 className="text-2xl font-semibold mb-4">
@@ -1285,16 +2349,43 @@ const ExhibitorRegistration = () => {
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
-                        Hall No.
+                        Hall No.*
                       </label>
-                      <input
-                        type="text"
+                      <select
                         {...register("hallNo")}
-                        placeholder="Enter Hall No."
                         className={`w-full h-13 border bg-white ${
                           errors.hallNo ? "border-red-500" : "border-gray-300"
                         } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
+                      >
+                        <option value=""></option>
+                        <optgroup label="Ground Floor">
+                          {hallOptions.groundFloor.map((hall) => (
+                            <option
+                              key={`ground-${hall}`}
+                              value={`Ground Floor ${hall}`}
+                            >
+                              {hall}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="First Floor">
+                          {hallOptions.firstFloor.map((hall) => (
+                            <option
+                              key={`first-${hall}`}
+                              value={`First Floor ${hall}`}
+                            >
+                              {hall}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Hangers">
+                          {hallOptions.hangers.map((hanger) => (
+                            <option key={hanger} value={hanger}>
+                              {hanger}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
                       {errors.hallNo && (
                         <p className="text-red-500 text-sm mt-1">
                           {errors.hallNo.message}
@@ -1303,7 +2394,7 @@ const ExhibitorRegistration = () => {
                     </div>
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
-                        Stall No.
+                        Stall No.*
                       </label>
                       <input
                         type="text"
@@ -1324,12 +2415,41 @@ const ExhibitorRegistration = () => {
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
-                        Area Required (in sqmt)
+                        Scheme*
                       </label>
+                      <select
+                        {...register("scheme")}
+                        className={`w-full h-13 border bg-white ${
+                          errors.scheme ? "border-red-500" : "border-gray-300"
+                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                      >
+                        <option value=""></option>
+                        <option value="bare">Bare</option>
+                        <option value="shell">Shell</option>
+                      </select>
+                      {errors.scheme && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.scheme.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="mb-4 w-full md:w-1/2">
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Area Required (in sqmt)*
+                      </label>
+
                       <input
-                        type="text"
+                        type="number"
                         {...register("areaRequired")}
-                        placeholder="Enter Area Required (in sqmt)"
+                        placeholder={`Enter area in sqm (minimum ${
+                          watchedScheme === "raw"
+                            ? "36"
+                            : watchedScheme === "shell"
+                            ? "6"
+                            : "6"
+                        })`}
+                        min={watchedScheme === "raw" ? "36" : "6"}
+                        step="1"
                         className={`w-full h-13 border bg-white ${
                           errors.areaRequired
                             ? "border-red-500"
@@ -1342,50 +2462,158 @@ const ExhibitorRegistration = () => {
                         </p>
                       )}
                     </div>
-                    <div className="mb-4 w-full md:w-1/2">
-                      <label className="block text-gray-700 font-medium mb-2">
-                        Area of interest
-                      </label>
-                      <input
-                        type="text"
-                        {...register("areaOfInterest")}
-                        placeholder="Enter Area of interest"
-                        className={`w-full h-13 border bg-white ${
-                          errors.areaOfInterest
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
-                      />
-                      {errors.areaOfInterest && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.areaOfInterest.message}
-                        </p>
-                      )}
-                    </div>
                   </div>
                   {/* Row 3 */}
+
+                  {/* Row 4 */}
                   <div className="flex flex-col md:flex-row items-start mb-2 w-full gap-x-20">
                     <div className="mb-4 w-full md:w-1/2">
                       <label className="block text-gray-700 font-medium mb-2">
-                        List of products
+                        Product Categories*
                       </label>
-                      <input
-                        type="text"
-                        {...register("listOfProducts")}
-                        placeholder="Enter Chief Executive Designation*"
-                        className={`w-full h-13 border bg-white ${
-                          errors.listOfProducts
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                      <Controller
+                        name="productCategory"
+                        control={control}
+                        render={({ field }) => (
+                          <Autocomplete
+                            multiple
+                            options={Object.keys(productList)}
+                            value={selectedCategories}
+                            onChange={(_, newValue) => {
+                              setSelectedCategories(newValue);
+                              field.onChange(newValue);
+                              // Reset subcategories when categories change
+                              setSelectedSubCategories([]);
+                              setValue("productSubCategory", []);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="Select Product Categories"
+                                error={!!errors.productCategory}
+                                helperText={errors.productCategory?.message}
+                                className={`w-full border bg-white ${
+                                  errors.productCategory
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                              />
+                            )}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                "& fieldset": {
+                                  borderColor: errors.productCategory
+                                    ? "#EF4444"
+                                    : "#D1D5DB",
+                                },
+                                "&:hover fieldset": {
+                                  borderColor: "#B5207E",
+                                },
+                                "&.Mui-focused fieldset": {
+                                  borderColor: "#B5207E",
+                                  borderWidth: "2px",
+                                },
+                              },
+                            }}
+                          />
+                        )}
                       />
-                      {errors.listOfProducts && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.listOfProducts.message}
-                        </p>
-                      )}
                     </div>
+
+                    {selectedCategories.length > 0 && (
+                      <div className="mb-4 w-full md:w-1/2">
+                        <label className="block text-gray-700 font-medium mb-2">
+                          Product Sub-Categories*
+                        </label>
+                        <Controller
+                          name="productSubCategory"
+                          control={control}
+                          render={({ field }) => (
+                            <Autocomplete
+                              multiple
+                              options={selectedCategories.flatMap(
+                                (category) => productList[category] || []
+                              )}
+                              value={selectedSubCategories}
+                              onChange={(_, newValue) => {
+                                setSelectedSubCategories(newValue);
+                                field.onChange(newValue);
+                              }}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  placeholder="Select Product Sub-Categories"
+                                  error={!!errors.productSubCategory}
+                                  helperText={
+                                    errors.productSubCategory?.message
+                                  }
+                                  className={`w-full border bg-white ${
+                                    errors.productSubCategory
+                                      ? "border-red-500"
+                                      : "border-gray-300"
+                                  } rounded-sm focus:outline-none focus:ring-2 focus:ring-[#B5207E]`}
+                                />
+                              )}
+                              sx={{
+                                "& .MuiOutlinedInput-root": {
+                                  "& fieldset": {
+                                    borderColor: errors.productSubCategory
+                                      ? "#EF4444"
+                                      : "#D1D5DB",
+                                  },
+                                  "&:hover fieldset": {
+                                    borderColor: "#B5207E",
+                                  },
+                                  "&.Mui-focused fieldset": {
+                                    borderColor: "#B5207E",
+                                    borderWidth: "2px",
+                                  },
+                                },
+                              }}
+                            />
+                          )}
+                        />
+                      </div>
+                    )}
                   </div>
+                </div>
+                <div className="w-full mt-6 mb-4">
+                  <label className="inline-flex items-start">
+                    <input
+                      type="checkbox"
+                      {...register("termsAccepted")}
+                      className="form-checkbox h-5 w-5 text-[#B5207E] rounded border-gray-300 focus:ring-[#B5207E] mt-1"
+                    />
+                    <span className="ml-2 text-gray-700">
+                      * I have carefully read and understood the{" "}
+                      <a
+                        href="https://sit-event-backend-public.s3.amazonaws.com/event/img/ad_ur/1/1747249013254_Rules___Regulations_for_Exhibitors.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#B5207E] underline hover:text-[#8A1861]"
+                      >
+                        General Exhibitor Rules
+                      </a>{" "}
+                      and I agree to Terms and Conditions without any
+                      reservations whatsoever. I further understand that this
+                      Application form is valid only if accompanied by payment
+                      as per the specified payment schedule in the{" "}
+                      <a
+                        href="https://sit-event-backend-public.s3.amazonaws.com/event/img/ad_ur/1/1747249013254_Rules___Regulations_for_Exhibitors.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#B5207E] underline hover:text-[#8A1861]"
+                      >
+                        General Exhibitor Rules
+                      </a>{" "}
+                      and as detailed under.
+                    </span>
+                  </label>
+                  {errors.termsAccepted && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.termsAccepted.message}
+                    </p>
+                  )}
                 </div>
               </>
             )}
@@ -1421,7 +2649,7 @@ const ExhibitorRegistration = () => {
               )}
 
               {/* Next or Submit Button */}
-              {currentStep.id < 3 ? (
+              {currentStep.id < 4 ? (
                 <button
                   type="button"
                   className={`bg-[#B5207E] w-full lg:w-40 h-14 text-xl cursor-pointer text-white rounded-full px-4 py-2 hover:scale-105 duration-300 disabled:opacity-50`}
@@ -1433,14 +2661,16 @@ const ExhibitorRegistration = () => {
               ) : (
                 <button
                   type="button"
-                  className="bg-[#B5207E] self-end w-full lg:w-40 h-14 text-xl cursor-pointer text-white rounded-full px-4 py-2 hover:scale-105 duration-300 disabled:opacity-50"
-                  disabled={isSubmitting}
+                  className={`bg-[#B5207E] self-end w-full lg:w-40 h-14 text-xl cursor-pointer text-white rounded-full px-4 py-2 hover:scale-105 duration-300 disabled:opacity-50 disabled:hover:scale-100 ${
+                    !watch("termsAccepted") && "cursor-not-allowed"
+                  }`}
+                  disabled={isSubmitting || !watch("termsAccepted")}
                   onClick={() => {
                     const formData = getValues();
                     onSubmitApi(formData);
                   }}
                 >
-                  {isSubmitting ? "Submitting..." : "Checkout"}
+                  {isSubmitting ? "Submitting..." : "Register"}
                 </button>
               )}
             </div>

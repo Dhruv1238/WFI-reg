@@ -1,4 +1,5 @@
 import React from "react";
+
 import {
   FaFacebookF,
   FaLinkedinIn,
@@ -16,66 +17,125 @@ const Footer = () => {
             <img
               src="/white_logo-new.png"
               alt="World Food India"
-              className="h-24 md:h-32"
+              className=""
             />
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
-            <a
-              href="https://ficci.in/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white border border-gray-500 rounded-lg p-2 w-[140px] md:w-[160px] h-[80px]  flex items-center justify-center hover:border-[#961E7C] transition-colors"
-            >
-              <img
-                src="/FICCI_Logo.webp"
-                alt="FICCI"
-                className="h-12 md:h-18 object-contain"
-              />
-            </a>
-            <a
-              href="https://www.investindia.gov.in/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white border border-gray-500 rounded-lg p-2 w-[140px] md:w-[160px] h-[80px]  flex items-center justify-center hover:border-[#961E7C] transition-colors"
-            >
-              <img
-                src="/INVEST_INDIA_Logo.webp"
-                alt="Invest India"
-                className="h-12 md:h-18 object-contain"
-              />
-            </a>
-            <a
-              href="https://mofpi.gov.in/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white border border-gray-500 rounded-lg p-2 w-[140px] md:w-[160px] h-[80px]  flex items-center justify-center hover:border-[#961E7C] transition-colors"
-            >
-              <img
-                src="/MOFPI_Logo.webp"
-                alt="MOFPI"
-                className="h-12 md:h-18 object-contain"
-              />
-            </a>
-            <a
-              href="https://www.ey.com/en_in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white border border-gray-500 rounded-lg p-2 w-[140px] md:w-[160px] h-[80px] flex items-center justify-center hover:border-[#961E7C] transition-colors"
-            >
-              <img
-                src="/EY_Logo.webp"
-                alt="MOFPI"
-                className="h-12 md:h-18 object-contain"
-              />
-            </a>
+            <div className="w-[160px]">
+              <p className="text-white text-xs mb-1 sm:mb-5 font-semibold text-center">
+                ORGANISED BY
+              </p>
+              <a
+                href="https://mofpi.gov.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white border border-gray-500 rounded-lg p-2 h-[70px] flex flex-col items-center justify-center hover:border-[#961E7C] transition-colors"
+              >
+                <img
+                  src="/MOFPI_Logo.webp"
+                  alt="MOFPI"
+                  className="h-12 md:h-18 object-contain"
+                />
+              </a>
+            </div>
+
+            <div className="w-[160px]">
+              <p className="text-white text-xs mb-1 sm:mb-5 font-semibold text-center">
+                NATIONAL EVENT PARTNER
+              </p>
+              <a
+                href="https://ficci.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white border border-gray-500 rounded-lg p-2 h-[70px] flex flex-col items-center justify-center hover:border-[#961E7C] transition-colors"
+              >
+                <img
+                  src="/FICCI_Logo.webp"
+                  alt="FICCI"
+                  className="h-12 md:h-14 object-contain"
+                />
+              </a>
+            </div>
+
+            <div className="w-[160px]">
+              <p className="text-white text-xs mb-1 font-semibold text-center break-words">
+                INVESTMENT FACILIATION PARTNER
+              </p>
+              <a
+                href="https://www.investindia.gov.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white border border-gray-500 rounded-lg p-2 h-[70px] flex flex-col items-center justify-center hover:border-[#961E7C] transition-colors"
+              >
+                <img
+                  src="/invest_footer_logo.png"
+                  alt="Invest India"
+                  className="h-12 md:w-34 object-contain"
+                />
+              </a>
+            </div>
+
+            <div className="w-[160px]">
+              <p className="text-white text-xs mb-1 sm:mb-5 font-semibold text-center break-all">
+                REGULATORY PARTNER
+              </p>
+              <a
+                href="https://fssai.gov.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white border border-gray-500 rounded-lg p-2 h-[70px] flex flex-col items-center justify-center hover:border-[#961E7C] transition-colors"
+              >
+                <img
+                  src="/fssai_logo.png"
+                  alt="Invest India"
+                  className="h-12 md:w-34 object-contain"
+                />
+              </a>
+            </div>
+
+            <div className="w-[160px]">
+              <p className="text-white text-xs mb-1 sm:mb-5 font-semibold text-center">
+                KNOWLEDGE PARTNER
+              </p>
+              <a
+                href="https://www.ey.com/en_in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white border border-gray-500 rounded-lg p-2 h-[70px] flex flex-col items-center justify-center hover:border-[#961E7C] transition-colors"
+              >
+                <img
+                  src="/EY_Logo.webp"
+                  alt="MOFPI"
+                  className="h-12 md:h-14 object-contain"
+                />
+              </a>
+            </div>
+
+            <div className="w-[160px]">
+              <p className="text-white text-xs mb-1 sm:mb-5 font-semibold text-center">
+                VENUE PARTNER
+              </p>
+              <a
+                href="https://indiatradefair.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white border border-gray-500 rounded-lg p-2 h-[70px] flex flex-col items-center justify-center hover:border-[#961E7C] transition-colors"
+              >
+                <img
+                  src="/ITPO_logo.png"
+                  alt="MOFPI"
+                  className="h-12 md:h-18 object-contain"
+                />
+              </a>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-8">
+        <div className="flex flex-col md:flex-row items-center mb-8 gap-20">
           <div className="flex flex-col items-center md:items-start">
             <p className="text-sm mb-4 text-center md:text-left">
-              Download our mobile app
+              Download the app by clicking the link below :
             </p>
             <div className="flex space-x-4">
               <a href="#" className="h-10 md:h-8 lg:h-12">
@@ -95,55 +155,91 @@ const Footer = () => {
             </div>
           </div>
 
-          <nav className="flex flex-wrap justify-center gap-4 md:gap-8">
-            <a
-              href="/"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              Home
-            </a>
-            <a
-              href="/about"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              About
-            </a>
-            <a
-              href="/exhibition"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              Exhibition
-            </a>
-            <a
-              href="/conference"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              Conference
-            </a>
-            <a
-              href="/investor"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              Investor
-            </a>
-            <a
-              href="/knowledge-centre"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              Knowledge Centre
-            </a>
-            <a
-              href="/archive"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              Archive
-            </a>
-            <a
-              href="/contact"
-              className="text-white hover:text-[#961E7C] text-sm uppercase"
-            >
-              Contact
-            </a>
+          <nav className="flex flex-col gap-6 md:items-start">
+            <p className="text-sm italic text-center">Quick Link -</p>
+            <nav className="flex flex-wrap justify-center gap-4 md:gap-8">
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/book-a-stand"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                BOOK A STAND
+              </a>
+              <a
+                href="https://cute-lamington-e71b4d.netlify.app/"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                REGISTER NOW
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/contact"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                CONTACT US
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                MEDIA REGISTRATION
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                PRIVACY POLICY
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                COOKIES POLICY
+              </a>
+            </nav>
+            <nav className="flex flex-wrap justify-center gap-4 md:gap-8">
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                HOME
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/about"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                ABOUT
+              </a>
+
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                EXHIBITION
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                CONFERENCE
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/investor"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                INVESTOR
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/knowledge"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                KNOWLEDGE CENTER
+              </a>
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/archieve"
+                className="text-white hover:text-[#961E7C] text-sm uppercase"
+              >
+                ARCHIVE SECTION
+              </a>
+            </nav>
           </nav>
         </div>
       </div>
@@ -190,13 +286,16 @@ const Footer = () => {
 
           <div className="text-sm text-center md:text-left">
             <p>
-              © 2024 World Food India. All rights reserved.
-              <a href="/terms" className="text-[#83B4FF] hover:underline ml-1">
-                Terms of Use
+              © worldfoodindia.gov.in, All Rights Reserved. |
+              <a
+                href="https://incandescent-hotteok-21e835.netlify.app/terms"
+                className="text-[#83B4FF] hover:underline ml-1"
+              >
+                Terms and Conditions
               </a>{" "}
               |
               <a
-                href="/privacy"
+                href="https://incandescent-hotteok-21e835.netlify.app/privacy"
                 className="text-[#83B4FF] hover:underline ml-1"
               >
                 Privacy Policy
