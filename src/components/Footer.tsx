@@ -22,7 +22,7 @@ const Footer = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
-            <div className="w-[160px]">
+            {/* <div className="w-[160px]">
               <p className="text-white text-xs mb-1 sm:mb-5 font-semibold text-center">
                 ORGANISED BY
               </p>
@@ -38,11 +38,13 @@ const Footer = () => {
                   className="h-12 md:h-18 object-contain"
                 />
               </a>
-            </div>
+            </div> */}
 
             <div className="w-[160px]">
-              <p className="text-white text-xs mb-1 sm:mb-5 font-semibold text-center">
-                NATIONAL EVENT PARTNER
+              <p className="text-white text-xs mb-1 font-semibold text-center">
+                NATIONAL EVENT
+                <br />
+                PARTNER
               </p>
               <a
                 href="https://ficci.in/"
@@ -60,7 +62,9 @@ const Footer = () => {
 
             <div className="w-[160px]">
               <p className="text-white text-xs mb-1 font-semibold text-center break-words">
-                INVESTMENT FACILIATION PARTNER
+                INVESTMENT FACILIATION
+                <br />
+                PARTNER
               </p>
               <a
                 href="https://www.investindia.gov.in/"
@@ -193,51 +197,6 @@ const Footer = () => {
                 className="text-white hover:text-[#961E7C] text-sm uppercase"
               >
                 COOKIES POLICY
-              </a>
-            </nav>
-            <nav className="flex flex-wrap justify-center gap-4 md:gap-8">
-              <a
-                href="https://incandescent-hotteok-21e835.netlify.app/"
-                className="text-white hover:text-[#961E7C] text-sm uppercase"
-              >
-                HOME
-              </a>
-              <a
-                href="https://incandescent-hotteok-21e835.netlify.app/about"
-                className="text-white hover:text-[#961E7C] text-sm uppercase"
-              >
-                ABOUT
-              </a>
-
-              <a
-                href="https://incandescent-hotteok-21e835.netlify.app/"
-                className="text-white hover:text-[#961E7C] text-sm uppercase"
-              >
-                EXHIBITION
-              </a>
-              <a
-                href="https://incandescent-hotteok-21e835.netlify.app/"
-                className="text-white hover:text-[#961E7C] text-sm uppercase"
-              >
-                CONFERENCE
-              </a>
-              <a
-                href="https://incandescent-hotteok-21e835.netlify.app/investor"
-                className="text-white hover:text-[#961E7C] text-sm uppercase"
-              >
-                INVESTOR
-              </a>
-              <a
-                href="https://incandescent-hotteok-21e835.netlify.app/knowledge"
-                className="text-white hover:text-[#961E7C] text-sm uppercase"
-              >
-                KNOWLEDGE CENTER
-              </a>
-              <a
-                href="https://incandescent-hotteok-21e835.netlify.app/archieve"
-                className="text-white hover:text-[#961E7C] text-sm uppercase"
-              >
-                ARCHIVE SECTION
               </a>
             </nav>
           </nav>
