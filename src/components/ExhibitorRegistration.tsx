@@ -24,7 +24,7 @@ import {
   ICity,
 } from "country-state-city";
 import { useNavigate } from "react-router-dom";
-import { usePrice } from "../context/Price";
+// import { usePrice } from "../context/Price";
 import {
   CitySelect,
   CountrySelect,
@@ -520,7 +520,7 @@ const ExhibitorRegistration = () => {
   const [totalCost, setTotalCost] = useState(0);
   const [countryId, setCountryId] = useState(0);
   const [stateId, setStateId] = useState(0);
-  const { setAmount } = usePrice();
+  // const { setAmount } = usePrice();
 
   const navigate = useNavigate();
 
@@ -793,7 +793,7 @@ const ExhibitorRegistration = () => {
 
     console.log("Jhugyf");
     setApiMessage({ type: "info", text: "Submitting..." });
-    setAmount(totalCost);
+    // setAmount(totalCost);
     const payload = {
       firstName: formData.contactPersonFirstName || "",
       lastName: formData.contactPersonLastName || "",

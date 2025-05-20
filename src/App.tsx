@@ -9,9 +9,9 @@ function App() {
     <>
       <LoaderProvider>
         <PriceProvider>
-          <Header />
+          {/* <Header /> */}
           <AppRouter />
-          <Footer />
+          {/* <Footer /> */}
         </PriceProvider>
       </LoaderProvider>
     </>
